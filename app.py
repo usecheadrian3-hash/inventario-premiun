@@ -10,11 +10,11 @@ app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-DB_HOST = os.environ.get("DB_HOST", "localhost")
-DB_USER = os.environ.get("DB_USER", "root")
-DB_PASS = os.environ.get("DB_PASS", "")
-DB_NAME = os.environ.get("DB_NAME", "sistema_inventario")
-DB_PORT = int(os.environ.get("DB_PORT", "3306"))
+DB_HOST = os.environ.get("MYSQLHOST") or os.environ.get("DB_HOST", "localhost")
+DB_USER = os.environ.get("MYSQLUSER") or os.environ.get("DB_USER", "root")
+DB_PASS = os.environ.get("MYSQLPASSWORD") or os.environ.get("DB_PASS", "")
+DB_NAME = os.environ.get("MYSQLDATABASE") or os.environ.get("DB_NAME", "sistema_inventario")
+DB_PORT = int(os.environ.get("MYSQLPORT") or os.environ.get("DB_PORT", "3306"))
 
 def _conectar():
     conn = mysql.connector.connect(
@@ -189,7 +189,17 @@ def crear_tablas():
     except: pass
     conexion.commit()
 
-crear_tablas()
+_tablas_creadas = False
+
+def _ini():
+    global _tablas_creadas
+    if not _tablas_creadas:
+        crear_tablas()
+        _tablas_creadas = True
+
+@app.before_request
+def _init_once():
+    _ini()
 
 def tiene_permiso(permiso):
     if 'usuario_id' not in session:

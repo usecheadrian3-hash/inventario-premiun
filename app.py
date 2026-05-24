@@ -10,11 +10,21 @@ app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-DB_HOST = os.environ.get("MYSQLHOST") or os.environ.get("DB_HOST", "localhost")
-DB_USER = os.environ.get("MYSQLUSER") or os.environ.get("DB_USER", "root")
-DB_PASS = os.environ.get("MYSQLPASSWORD") or os.environ.get("DB_PASS", "")
-DB_NAME = os.environ.get("MYSQLDATABASE") or os.environ.get("DB_NAME", "sistema_inventario")
-DB_PORT = int(os.environ.get("MYSQLPORT") or os.environ.get("DB_PORT", "3306"))
+_mysql_url = os.environ.get("MYSQL_URL")
+if _mysql_url:
+    from urllib.parse import urlparse
+    _u = urlparse(_mysql_url)
+    DB_HOST = _u.hostname or "localhost"
+    DB_USER = _u.username or "root"
+    DB_PASS = _u.password or ""
+    DB_NAME = _u.path.lstrip("/") if _u.path else "sistema_inventario"
+    DB_PORT = _u.port or 3306
+else:
+    DB_HOST = os.environ.get("MYSQLHOST") or os.environ.get("DB_HOST", "localhost")
+    DB_USER = os.environ.get("MYSQLUSER") or os.environ.get("DB_USER", "root")
+    DB_PASS = os.environ.get("MYSQLPASSWORD") or os.environ.get("DB_PASS", "")
+    DB_NAME = os.environ.get("MYSQLDATABASE") or os.environ.get("DB_NAME", "sistema_inventario")
+    DB_PORT = int(os.environ.get("MYSQLPORT") or os.environ.get("DB_PORT", "3306"))
 
 def _conectar():
     conn = mysql.connector.connect(

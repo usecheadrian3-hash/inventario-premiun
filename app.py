@@ -204,6 +204,10 @@ _tablas_creadas = False
 def _ini():
     global _tablas_creadas
     if not _tablas_creadas:
+        for k, v in sorted(os.environ.items()):
+            if "mysql" in k.lower() or "db_" in k.lower():
+                app.logger.warning("ENV %s=%s", k, v)
+        app.logger.warning("CONNECT host=%s user=%s db=%s port=%s", DB_HOST, DB_USER, DB_NAME, DB_PORT)
         crear_tablas()
         _tablas_creadas = True
 

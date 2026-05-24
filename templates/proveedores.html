@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proveedores</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<canvas id="bgCanvas"></canvas><div class="orb orb1"></div><div class="orb orb2"></div>
+<div class="topbar">
+    <div class="topbar-logo"><div class="topbar-logo-icon">🔧</div><span class="topbar-logo-text">Proveedores</span></div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-center">
+        <a href="{{ url_for('blog') }}" class="topbar-nav-btn">← Dashboard</a>
+        <a href="{{ url_for('ver_proveedores') }}" class="topbar-nav-btn active">Proveedores</a>
+        <a href="{{ url_for('ver_compras') }}" class="topbar-nav-btn">Compras</a>
+    </div>
+    <div class="topbar-right"><span class="role-badge">{{ usuario[6] }}</span></div>
+</div>
+<div class="main">
+    <div class="page-header">
+        <div class="main-titulo">📦 Proveedores <small>{{ proveedores|length }} registrados</small></div>
+    </div>
+    <div class="section-card">
+        <div class="section-card-header"><div class="section-card-icon">➕</div><span class="section-card-title">Agregar Proveedor</span></div>
+        <div class="section-card-body">
+            <form class="form-agregar" action="{{ url_for('agregar_proveedor') }}" method="POST">
+                <div class="form-grid">
+                    <input type="text" name="nombre" placeholder="Nombre" required autocomplete="name">
+                    <input type="text" name="contacto" placeholder="Contacto" autocomplete="name">
+                    <input type="tel" name="telefono" placeholder="Teléfono" autocomplete="tel">
+                    <input type="email" name="correo" placeholder="Correo" autocomplete="email">
+                    <input type="text" name="direccion" placeholder="Dirección" autocomplete="street-address">
+                </div>
+                <button type="submit" class="btn-agregar">✦ Agregar proveedor</button>
+            </form>
+        </div>
+    </div>
+    <div class="section-card">
+        <div class="section-card-header"><div class="section-card-icon">📋</div><span class="section-card-title">Lista de Proveedores</span></div>
+        <div class="section-card-body">
+        <div class="tabla-outer">
+            <table>
+                <thead><tr><th>ID</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th>Correo</th><th>Dirección</th><th>Acción</th></tr></thead>
+                <tbody>
+                {% for p in proveedores %}
+                <tr>
+                    <td><span class="id-chip">#{{ p[0] }}</span></td>
+                    <td><strong>{{ p[1] }}</strong></td>
+                    <td>{{ p[2] or '—' }}</td>
+                    <td>{{ p[3] or '—' }}</td>
+                    <td style="font-size:0.78rem;">{{ p[4] or '—' }}</td>
+                    <td style="font-size:0.75rem;">{{ p[5] or '—' }}</td>
+                    <td><a href="{{ url_for('eliminar_proveedor', id=p[0]) }}" class="btn-eliminar" onclick="return confirm('¿Eliminar proveedor?')">🗑 </a></td>
+                </tr>
+                {% endfor %}
+                {% if not proveedores %}
+                <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No hay proveedores</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+const c=document.getElementById('bgCanvas'),cx=c.getContext('2d');
+function r(){c.width=window.innerWidth;c.height=window.innerHeight;}r();window.addEventListener('resize',r);
+const stars=Array.from({length:100},()=>({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,r:Math.random()*1.2+0.2,phase:Math.random()*Math.PI*2,speed:Math.random()*0.005+0.002,color:['#ffffff','#aaddff','#d4aaff'][Math.floor(Math.random()*3)]}));
+let t=0;(function loop(){t+=0.01;cx.clearRect(0,0,c.width,c.height);stars.forEach(s=>{const a=0.3+0.7*Math.abs(Math.sin(t*s.speed*12+s.phase));cx.beginPath();cx.arc(s.x%c.width,s.y%c.height,s.r,0,Math.PI*2);cx.fillStyle=s.color;cx.globalAlpha=a;cx.fill();});cx.globalAlpha=1;requestAnimationFrame(loop);})();
+</script>
+</body>
+</html>

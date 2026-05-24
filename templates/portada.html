@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InventPro — Sistema de Inventario Inteligente</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+
+            --blue: #7c3aed; --blue-dark: #4c1d95; --blue-light: #a78bfa; --blue-glow: rgba(124,58,237,0.35);
+
+            --indigo: #6366f1; --violet: #8b5cf6;
+
+            --bg: #03050a; --bg-alt: #080c18;
+
+            --surface: rgba(15,22,48,0.85); --surface-alt: rgba(10,16,35,0.9);
+
+            --border: rgba(139,92,246,0.08); --border-light: rgba(139,92,246,0.15);
+
+            --text: #f0f4ff; --text-dim: rgba(200,215,255,0.55);
+
+            --glow-blue: rgba(124,58,237,0.25); --glow-indigo: rgba(99,102,241,0.2);
+
+        }
+
+        body {
+
+            font-family: 'DM Sans', sans-serif; background: var(--bg);
+
+            color: var(--text); overflow-x: hidden;
+
+            background-image: radial-gradient(ellipse at 20% 10%, rgba(124,58,237,0.06) 0%, transparent 60%),
+
+                            radial-gradient(ellipse at 80% 90%, rgba(99,102,241,0.04) 0%, transparent 50%);
+
+        }
+
+        /* ===== HERO ===== */
+
+        .hero {
+
+            min-height: 100vh; display: flex; align-items: center;
+
+            padding: 6rem 4rem 4rem; position: relative;
+
+            max-width: 1400px; margin: 0 auto;
+
+        }
+
+        .hero-content { flex: 1; z-index: 2; padding-right: 3rem; animation: floatSlow 7s ease-in-out infinite; }
+
+        .hero-badge {
+
+            display: inline-flex; align-items: center; gap: 0.4rem;
+
+            background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2);
+
+            border-radius: 100px; padding: 0.35rem 1rem 0.35rem 0.35rem;
+
+            font-size: 0.72rem; font-weight: 600; color: var(--blue-light);
+
+            margin-bottom: 2rem; letter-spacing: 0.02em;
+
+        }
+
+        .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+
+        .hero h1 {
+
+            font-size: clamp(2.8rem, 5.5vw, 4.8rem); font-weight: 900;
+
+            line-height: 1.05; letter-spacing: -0.03em;
+
+            margin-bottom: 1.2rem;
+
+        }
+
+        .hero h1 .gradient {
+
+            background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 40%, #6366f1 100%);
+
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+
+            background-clip: text; background-size: 200% 200%; animation: gradientShift 6s ease infinite;
+
+        }
+
+        .hero h1 .block { display: block; }
+
+        .hero-sub {
+
+            font-size: 1.05rem; color: var(--text-dim); line-height: 1.7;
+
+            max-width: 480px; margin-bottom: 2.5rem; font-weight: 400;
+
+        }
+
+        .hero-actions { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+
+        .btn-primary {
+
+            display: inline-flex; align-items: center; gap: 0.5rem;
+
+            padding: 0.85rem 2.2rem; border-radius: 50px;
+
+            background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+
+            color: #fff; font-weight: 700; font-size: 0.92rem;
+
+            text-decoration: none; transition: all 0.3s;
+
+            box-shadow: 0 8px 32px var(--glow-blue);
+
+            border: 1px solid rgba(255,255,255,0.08);
+
+        }
+
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px var(--glow-blue); }
+
+        .btn-secondary {
+
+            display: inline-flex; align-items: center; gap: 0.4rem;
+
+            padding: 0.85rem 2rem; border-radius: 50px;
+
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+
+            color: var(--text); font-weight: 600; font-size: 0.92rem;
+
+            text-decoration: none; transition: all 0.3s;
+
+        }
+
+        .btn-secondary:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+
+        .hero-stats { display: flex; gap: 2.5rem; margin-top: 3rem; }
+
+        .hero-stat h3 { font-size: 1.6rem; font-weight: 800; background: linear-gradient(135deg, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+        .hero-stat p { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 0.15rem; }
+
+        /* Dashboard mockup */
+
+        .hero-visual { flex: 1; z-index: 2; position: relative; }
+
+        .dash-mockup {
+
+            background: rgba(8,14,35,0.95); border: 1px solid rgba(139,92,246,0.12);
+
+            border-radius: 16px; overflow: hidden;
+
+            box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(124,58,237,0.06);
+
+            backdrop-filter: blur(20px);
+
+        }
+
+        .dash-topbar { display: flex; align-items: center; padding: 0.8rem 1.2rem; border-bottom: 1px solid rgba(139,92,246,0.08); gap: 1rem; }
+
+        .dash-topbar-logo { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg, var(--blue), var(--blue-dark)); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; flex-shrink: 0; }
+
+        .dash-topbar-search { flex: 1; height: 28px; background: rgba(255,255,255,0.04); border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); }
+
+        .dash-topbar-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--indigo), var(--violet)); }
+
+        .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; padding: 0.8rem; }
+
+        .dash-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; padding: 0.8rem; }
+
+        .dash-card-label { font-size: 0.55rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+
+        .dash-card-value { font-size: 1.1rem; font-weight: 800; }
+
+        .dash-card-value.blue { color: var(--blue-light); }
+
+        .dash-card-value.green { color: #4ade80; }
+
+        .dash-card-value.red { color: #f87171; }
+
+        .dash-card-value.yellow { color: #fbbf24; }
+
+        .dash-card-bar { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 0.4rem; overflow: hidden; }
+
+        .dash-card-bar-fill { height: 100%; border-radius: 2px; width: 60%; background: linear-gradient(90deg, var(--blue), var(--indigo)); }
+
+        .dash-table { padding: 0 0.8rem 0.8rem; }
+
+        .dash-table-row { display: flex; padding: 0.35rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.65rem; }
+
+        .dash-table-row span:first-child { flex: 1; color: var(--text-dim); }
+
+        .dash-table-row span:last-child { color: var(--text); font-weight: 600; }
+
+        .dash-chart { display: flex; gap: 4px; align-items: flex-end; height: 40px; padding: 0 0.8rem 0.5rem; }
+
+        .dash-chart-bar { flex: 1; border-radius: 2px 2px 0 0; background: linear-gradient(180deg, var(--blue), rgba(124,58,237,0.3)); height: 20px; }
+
+        .dash-chart-bar:nth-child(1) { height: 28px; }
+
+        .dash-chart-bar:nth-child(2) { height: 40px; }
+
+        .dash-chart-bar:nth-child(3) { height: 22px; }
+
+        .dash-chart-bar:nth-child(4) { height: 35px; }
+
+        .dash-chart-bar:nth-child(5) { height: 18px; }
+
+        .dash-chart-bar:nth-child(6) { height: 30px; }
+
+        .dash-chart-bar:nth-child(7) { height: 25px; }
+
+        .hero-glow {
+
+            position: absolute; width: 500px; height: 500px;
+
+            border-radius: 50%; background: radial-gradient(circle, rgba(124,58,237,0.12), transparent 70%);
+
+            top: -10%; right: -10%; pointer-events: none; z-index: 0;
+
+        }
+
+        /* ===== ROLES SECTION ===== */
+
+        .roles-section {
+
+            padding: 6rem 4rem; max-width: 1200px; margin: 0 auto;
+
+            border-top: 1px solid rgba(139,92,246,0.06);
+
+        }
+
+        .section-label {
+
+            text-align: center; font-size: 0.72rem; text-transform: uppercase;
+
+            letter-spacing: 0.2em; color: var(--blue-light); font-weight: 700;
+
+            margin-bottom: 0.5rem;
+
+        }
+
+        .section-title {
+
+            text-align: center; font-size: clamp(2rem, 4vw, 3rem);
+
+            font-weight: 800; line-height: 1.1; margin-bottom: 0.8rem;
+
+        }
+
+        .section-sub {
+
+            text-align: center; color: var(--text-dim);
+
+            max-width: 500px; margin: 0 auto 3rem; font-size: 0.95rem; line-height: 1.6;
+
+        }
+
+        .roles-grid {
+
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+
+        }
+
+        .role-card {
+
+            background: var(--surface); border: 1px solid var(--border-light);
+
+            border-radius: 16px; padding: 1.8rem 1.5rem;
+
+            transition: all 0.3s; position: relative; overflow: hidden;
+
+        }
+
+        .role-card::before {
+
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+
+            height: 2px; background: linear-gradient(90deg, var(--blue), var(--indigo));
+
+            opacity: 0.4;
+
+        }
+
+        .role-card:hover { transform: translateY(-4px); border-color: rgba(139,92,246,0.25); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+
+        .role-icon {
+
+            width: 44px; height: 44px; border-radius: 12px;
+
+            display: flex; align-items: center; justify-content: center;
+
+            font-size: 1.3rem; margin-bottom: 1rem;
+
+        }
+
+        .role-icon.admin { background: rgba(139,92,246,0.15); }
+
+        .role-icon.empleado { background: rgba(124,58,237,0.15); }
+
+        .role-icon.cajero { background: rgba(34,197,94,0.15); }
+
+        .role-icon.invitado { background: rgba(245,158,11,0.15); }
+
+        .role-name { font-size: 1rem; font-weight: 800; margin-bottom: 0.4rem; }
+
+        .role-desc { font-size: 0.78rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 1.2rem; }
+
+        .role-perms { display: flex; flex-direction: column; gap: 0.3rem; }
+
+        .role-perm { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--text-dim); }
+
+        .role-perm .check { color: #4ade80; font-weight: 700; }
+
+        .role-perm .x { color: #f87171; }
+
+        /* ===== FEATURES ===== */
+
+        .features-section {
+
+            padding: 6rem 4rem; max-width: 1200px; margin: 0 auto;
+
+            border-top: 1px solid rgba(139,92,246,0.06);
+
+        }
+
+        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+
+        .feature-card {
+
+            background: var(--surface); border: 1px solid var(--border);
+
+            border-radius: 16px; padding: 1.5rem; transition: all 0.4s cubic-bezier(0.22,1,0.36,1);
+
+            position: relative; overflow: hidden;
+
+        }
+
+        .feature-card::after { content: ''; position: absolute; inset: 0; border-radius: 16px; background: linear-gradient(135deg, rgba(139,92,246,0.03), transparent); pointer-events: none; }
+
+        .feature-card:hover { border-color: rgba(139,92,246,0.25); transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.35), 0 0 40px rgba(124,58,237,0.04); }
+
+        .feature-icon { font-size: 1.5rem; margin-bottom: 0.8rem; }
+
+        .feature-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.3rem; }
+
+        .feature-desc { font-size: 0.78rem; color: var(--text-dim); line-height: 1.5; }
+
+        /* ===== CTA ===== */
+
+        .cta-section {
+
+            padding: 5rem 4rem; text-align: center;
+
+            border-top: 1px solid rgba(139,92,246,0.06);
+
+        }
+
+        .cta-section h2 { font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 800; margin-bottom: 1rem; }
+
+        .cta-section p { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 2rem; }
+
+        /* ===== FOOTER ===== */
+
+        .footer {
+
+            padding: 2rem 4rem; border-top: 1px solid rgba(139,92,246,0.06);
+
+            display: flex; justify-content: space-between; align-items: center;
+
+            max-width: 1400px; margin: 0 auto; font-size: 0.78rem; color: var(--text-dim);
+
+        }
+
+        @media (max-width: 900px) {
+
+            .hero { flex-direction: column; padding: 5rem 2rem 3rem; gap: 3rem; }
+
+            .hero-content { padding-right: 0; }
+
+            .roles-grid { grid-template-columns: 1fr 1fr; }
+
+            .features-grid { grid-template-columns: 1fr; }
+
+            .roles-section, .features-section { padding: 4rem 2rem; }
+
+            .cta-section { padding: 3rem 2rem; }
+
+        }
+
+        @media (max-width: 500px) {
+
+            .roles-grid { grid-template-columns: 1fr; }
+
+            .hero-stats { flex-direction: column; gap: 1rem; }
+
+        }
+
+                .navbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            display: flex; align-items: center; padding: 0 3rem; height: 68px;
+            background: rgba(3,5,10,0.85); backdrop-filter: blur(24px);
+            border-bottom: 1px solid rgba(139,92,246,0.06);
+            max-width: 1400px; margin: 0 auto;
+        }
+        .navbar-brand {
+            display: flex; align-items: center; gap: 0.6rem;
+        }
+        .navbar-brand-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: linear-gradient(135deg,#7c3aed,#4c1d95);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 12px rgba(124,58,237,0.3);
+        }
+        .navbar-brand-text {
+            font-weight: 800; font-size: 1rem; letter-spacing: -0.02em;
+        }
+        .navbar-brand-text span { color: #a78bfa; }
+        .navbar-links {
+            display: flex; align-items: center; gap: 0.1rem; margin-left: 3rem;
+        }
+        .navbar-link {
+            padding: 0.4rem 0.9rem; color: var(--text-dim);
+            font-size: 0.82rem; font-weight: 500; text-decoration: none;
+            border-radius: 8px; transition: all 0.2s;
+        }
+        .navbar-link:hover { background: rgba(255,255,255,0.04); }
+        .navbar-actions {
+            margin-left: auto; display: flex; gap: 0.6rem;
+        }
+        .nav-btn-login {
+            padding: 0.45rem 1.2rem; color: var(--text-dim);
+            font-size: 0.82rem; font-weight: 500; text-decoration: none;
+            border-radius: 50px; transition: all 0.2s;
+        }
+        .nav-btn-login:hover { background: rgba(255,255,255,0.04); }
+        .nav-btn-register {
+            padding: 0.45rem 1.4rem;
+            background: linear-gradient(135deg,#7c3aed,#6366f1);
+            color: #fff; font-size: 0.82rem; font-weight: 700;
+            text-decoration: none; border-radius: 50px;
+            box-shadow: 0 4px 20px rgba(124,58,237,0.35);
+            transition: all 0.3s;
+        }
+        .nav-btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(124,58,237,0.45);
+        }
+        .status-active { color: #4ade80; }
+        .status-agotado { color: #f87171; }
+        .footer-links { display: flex; gap: 1rem; }
+        .footer-link { color: var(--text-dim); text-decoration: none; }
+        .footer-link:hover { color: var(--text); }
+        .cta-btn { padding: 1rem 3rem; font-size: 1rem; }
+
+        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes floatSlow { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+        @keyframes shimmer { 0% { left: -100%; } 100% { left: 200%; } }
+        @keyframes pulseGlow { 0%,100% { box-shadow: 0 8px 32px var(--glow-blue); } 50% { box-shadow: 0 12px 48px var(--glow-blue), 0 0 80px rgba(124,58,237,0.08); } }
+
+        .hero h1 { animation: floatSlow 7s ease-in-out infinite; }
+        .features-section { animation: floatSlow 8s ease-in-out infinite; }
+        .btn-primary { animation: pulseGlow 3s ease-in-out infinite; }
+
+    </style>
+</head>
+<body>
+<!-- ===== NAVBAR ===== -->
+<nav class="navbar">
+    <div class="navbar-brand">
+        <div class="navbar-brand-icon">📦</div>
+        <span class="navbar-brand-text">Invent<span>Pro</span></span>
+    </div>
+    <div class="navbar-links">
+        <a href="#features" class="navbar-link">Características</a>
+        <a href="#roles" class="navbar-link">Roles</a>
+        <a href="/login" class="navbar-link">Ingresar</a>
+    </div>
+    <div class="navbar-actions">
+        <a href="/login" class="nav-btn-login">Iniciar sesión</a>
+        <a href="/registro" class="nav-btn-register">Comenzar gratis →</a>
+    </div>
+</nav>
+<!-- ===== HERO ===== -->
+<section class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+        <div class="hero-badge">
+            <span class="hero-badge-dot"></span>
+            Sistema de gestión en tiempo real
+        </div>
+        <h1>
+            <span class="block">Control total.</span>
+            <span class="block gradient">Inventario real.</span>
+            <span class="block">Negocios inteligentes.</span>
+        </h1>
+        <p class="hero-sub">
+            Gestiona tu inventario con una plataforma profesional diseñada para empresas modernas.
+            Controla productos, ventas, usuarios y finanzas desde un solo lugar.
+        </p>
+        <div class="hero-actions">
+            <a href="/registro" class="btn-primary">✦ Comenzar ahora</a>
+            <a href="/login" class="btn-secondary">🔐 Iniciar sesión</a>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat"><h3>100+</h3><p>Empresas activas</p></div>
+            <div class="hero-stat"><h3>10K+</h3><p>Productos gestionados</p></div>
+            <div class="hero-stat"><h3>99%</h3><p>Satisfacción</p></div>
+        </div>
+    </div>
+    <div class="hero-visual">
+        <div class="dash-mockup">
+            <div class="dash-topbar">
+                <div class="dash-topbar-logo">📦</div>
+                <div class="dash-topbar-search"></div>
+                <div class="dash-topbar-avatar"></div>
+            </div>
+            <div class="dash-grid">
+                <div class="dash-card">
+                    <div class="dash-card-label">Total productos</div>
+                    <div class="dash-card-value blue">248</div>
+                    <div class="dash-card-bar"><div class="dash-card-bar-fill" style="width:70%;"></div></div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-label">Stock bajo</div>
+                    <div class="dash-card-value red">12</div>
+                    <div class="dash-card-bar"><div class="dash-card-bar-fill" style="width:20%;background:linear-gradient(90deg,#ef4444,#dc2626);"></div></div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-label">Ventas del mes</div>
+                    <div class="dash-card-value green">$48,200</div>
+                    <div class="dash-card-bar"><div class="dash-card-bar-fill" style="width:80%;background:linear-gradient(90deg,#22c55e,#15803d);"></div></div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-label">Ganancia neta</div>
+                    <div class="dash-card-value yellow">$12,450</div>
+                    <div class="dash-card-bar"><div class="dash-card-bar-fill" style="width:55%;background:linear-gradient(90deg,#f59e0b,#b45309);"></div></div>
+                </div>
+            </div>
+            <div class="dash-chart">
+                <div class="dash-chart-bar"></div>
+                <div class="dash-chart-bar"></div>
+                <div class="dash-chart-bar"></div>
+                <div class="dash-chart-bar"></div>
+                <div class="dash-chart-bar"></div>
+                <div class="dash-chart-bar"></div>
+                <div class="dash-chart-bar"></div>
+            </div>
+            <div class="dash-table">
+                <div class="dash-table-row"><span>Laptop Pro 15</span><span>$1,299.00</span><span class="status-active">Activo</span></div>
+                <div class="dash-table-row"><span>Monitor 27"</span><span>$459.00</span><span class="status-active">Activo</span></div>
+                <div class="dash-table-row"><span>Teclado Mecánico</span><span>$89.00</span><span class="status-agotado">Agotado</span></div>
+                <div class="dash-table-row"><span>Mouse Inalámbrico</span><span>$49.00</span><span class="status-active">Activo</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- ===== FEATURES ===== -->
+<section class="features-section" id="features">
+    <div class="section-label">Funcionalidades</div>
+    <h2 class="section-title">Todo lo que necesitas</h2>
+    <p class="section-sub">Una plataforma completa para la gestión empresarial moderna</p>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <div class="feature-name">Dashboard Inteligente</div>
+            <div class="feature-desc">Gráficas automáticas, KPIs en tiempo real y análisis de ventas, gastos y ganancias.</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🧾</div>
+            <div class="feature-name">Facturación + IVA</div>
+            <div class="feature-desc">Recibos PDF con código de barras, Excel financiero y cálculo automático de IVA.</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🔰</div>
+            <div class="feature-name">Roles y Permisos</div>
+            <div class="feature-desc">Administrador, Empleado, Cajero e Invitado con accesos diferenciados.</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📦</div>
+            <div class="feature-name">Control de Stock</div>
+            <div class="feature-desc">Alertas de stock bajo, proveedores, categorías y etiquetas personalizadas.</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">👥</div>
+            <div class="feature-name">Clientes + Historial</div>
+            <div class="feature-desc">Registro de clientes con historial de compras, visitas y clientes frecuentes.</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🎨</div>
+            <div class="feature-name">Personalización</div>
+            <div class="feature-desc">Tema claro/oscuro, círculo cromático, colores personalizados por usuario.</div>
+        </div>
+    </div>
+</section>
+<!-- ===== ROLES ===== -->
+<section class="roles-section" id="roles">
+    <div class="section-label">Roles del sistema</div>
+    <h2 class="section-title">Cada rol,<br>su nivel de acceso</h2>
+    <p class="section-sub">Cuatro tipos de cuenta con permisos específicos para cada área de tu negocio</p>
+    <div class="roles-grid">
+        <div class="role-card">
+            <div class="role-icon admin">🔰</div>
+            <div class="role-name">Administrador</div>
+            <div class="role-desc">Control total del sistema. Gestiona usuarios, productos, ventas y configuración.</div>
+            <div class="role-perms">
+                <div class="role-perm"><span class="check">✓</span> Panel de administración</div>
+                <div class="role-perm"><span class="check">✓</span> Gestión de usuarios</div>
+                <div class="role-perm"><span class="check">✓</span> Historial completo</div>
+                <div class="role-perm"><span class="check">✓</span> Reportes empresariales</div>
+                <div class="role-perm"><span class="check">✓</span> Configuración global</div>
+            </div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon empleado">👤</div>
+            <div class="role-name">Empleado</div>
+            <div class="role-desc">Acceso al inventario completo. Puede agregar, editar y gestionar productos.</div>
+            <div class="role-perms">
+                <div class="role-perm"><span class="check">✓</span> Ver inventario</div>
+                <div class="role-perm"><span class="check">✓</span> Agregar productos</div>
+                <div class="role-perm"><span class="check">✓</span> Editar productos</div>
+                <div class="role-perm"><span class="check">✓</span> Generar recibos</div>
+                <div class="role-perm"><span class="x">—</span> Panel admin</div>
+            </div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon cajero">🧾</div>
+            <div class="role-name">Cajero</div>
+            <div class="role-desc">Enfocado en ventas y facturación. Registra ventas y genera recibos.</div>
+            <div class="role-perms">
+                <div class="role-perm"><span class="check">✓</span> Ver productos</div>
+                <div class="role-perm"><span class="check">✓</span> Registrar ventas</div>
+                <div class="role-perm"><span class="check">✓</span> Generar recibos PDF</div>
+                <div class="role-perm"><span class="check">✓</span> Clientes</div>
+                <div class="role-perm"><span class="x">—</span> Editar productos</div>
+            </div>
+        </div>
+        <div class="role-card">
+            <div class="role-icon invitado">👁️</div>
+            <div class="role-name">Invitado</div>
+            <div class="role-desc">Acceso de solo lectura. Consulta el inventario sin modificar nada.</div>
+            <div class="role-perms">
+                <div class="role-perm"><span class="check">✓</span> Ver inventario</div>
+                <div class="role-perm"><span class="check">✓</span> Ver estadísticas</div>
+                <div class="role-perm"><span class="check">✓</span> Ver comentarios</div>
+                <div class="role-perm"><span class="x">—</span> Agregar productos</div>
+                <div class="role-perm"><span class="x">—</span> Editar/Eliminar</div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- ===== CTA ===== -->
+<section class="cta-section">
+    <h2>¿Listo para transformar tu inventario?</h2>
+    <p>Únete a las empresas que ya gestionan su negocio con InventPro</p>
+    <a href="/registro" class="btn-primary cta-btn">✦ Crear cuenta gratuita</a>
+</section>
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+    <span>© 2026 InventPro. Todos los derechos reservados.</span>
+    <span class="footer-links">
+        <a href="/login" class="footer-link">Iniciar sesión</a>
+        <a href="{{ url_for('comentarios') }}" class="footer-link">Comentarios</a>
+    </span>
+</div>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

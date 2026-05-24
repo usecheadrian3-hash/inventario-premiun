@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Contraseña — InventPro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --blue: #7c3aed; --blue-dark: #4c1d95; --blue-light: #a78bfa;
+            --bg: #03050a;
+            --text: #f0f4ff; --text-dim: rgba(200,215,255,0.55);
+        }
+        body {
+            font-family: 'DM Sans', sans-serif; background: var(--bg);
+            color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background-image: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.06) 0%, transparent 60%),
+                              radial-gradient(ellipse at 70% 80%, rgba(99,102,241,0.04) 0%, transparent 50%);
+        }
+        .auth-container {
+            display: flex; align-items: stretch; max-width: 840px; width: 100%; margin: 2rem;
+            background: rgba(8,14,35,0.8); border: 1px solid rgba(139,92,246,0.08);
+            border-radius: 20px; overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+            backdrop-filter: blur(20px);
+        }
+        .auth-left {
+            flex: 1; padding: 3rem 2.5rem; display: flex; flex-direction: column;
+            justify-content: center;
+        }
+        .auth-logo {
+            display: flex; align-items: center; gap: 0.6rem; margin-bottom: 2rem;
+        }
+        .auth-logo-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--blue), #4c1d95);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; box-shadow: 0 4px 16px rgba(124,58,237,0.3);
+        }
+        .auth-logo-text { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.02em; }
+        .auth-logo-text span { color: #a78bfa; }
+        .auth-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.3rem; }
+        .auth-sub { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 2rem; }
+        .auth-form { display: flex; flex-direction: column; gap: 1rem; }
+        .auth-form label { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+        .auth-form .input-wrap { position: relative; }
+        .auth-form .input-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-size: 0.9rem; pointer-events: none; z-index: 1; opacity: 0.55; }
+        .auth-form input {
+            width: 100%; padding: 0.9rem 1.1rem; border-radius: 12px;
+            border: 1px solid rgba(139,92,246,0.12);
+            background: rgba(255,255,255,0.03); color: var(--text);
+            font-family: "DM Sans", sans-serif; font-size: 0.9rem;
+            transition: all 0.25s cubic-bezier(0.22,1,0.36,1); outline: none;
+        }
+        .auth-form input:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(124,58,237,0.10), 0 0 30px rgba(124,58,237,0.04); transform: translateY(-1px); background: rgba(255,255,255,0.05); }
+        .auth-form input:hover { border-color: rgba(139,92,246,0.2); background: rgba(255,255,255,0.04); }
+        .auth-form input::placeholder { color: rgba(200,215,255,0.3); }
+        .auth-btn {
+            padding: 0.9rem; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+            color: #fff; font-weight: 700; font-size: 0.92rem; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.22,1,0.36,1); box-shadow: 0 8px 32px rgba(124,58,237,0.25);
+            font-family: "DM Sans", sans-serif; position: relative; overflow: hidden;
+        }
+        .auth-btn::before { content: ""; position: absolute; top: -60%; left: -60%; width: 220%; height: 220%; background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 60%); opacity: 0; transition: opacity 0.4s ease; }
+        .auth-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(124,58,237,0.35), 0 0 60px rgba(124,58,237,0.06); }
+        .auth-btn:hover::before { opacity: 1; }
+        .auth-links { margin-top: 1.5rem; text-align: center; }
+        .auth-links a { color: var(--text-dim); font-size: 0.78rem; text-decoration: none; transition: all 0.25s cubic-bezier(0.22,1,0.36,1); padding: 0.15rem 0; }
+        .auth-links a:hover { color: #a78bfa; }
+        .auth-right {
+            flex: 1; background: linear-gradient(135deg, rgba(124,58,237,0.04), rgba(99,102,241,0.04));
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 3rem; border-left: 1px solid rgba(139,92,246,0.06);
+        }
+        .auth-right h3 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.5rem; }
+        .auth-right p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.6; margin-bottom: 1.5rem; }
+        .auth-features { display: flex; flex-direction: column; gap: 0.8rem; }
+        .auth-feat { display: flex; align-items: center; gap: 0.7rem; font-size: 0.8rem; }
+        .auth-feat-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(99,102,241,0.08)); flex-shrink: 0; box-shadow: 0 2px 8px rgba(124,58,237,0.06); transition: all 0.3s ease; }
+        .auth-feat:hover .auth-feat-icon { transform: scale(1.1); background: linear-gradient(135deg, rgba(124,58,237,0.18), rgba(99,102,241,0.12)); }
+        @media (max-width: 700px) {
+            .auth-container { flex-direction: column; }
+            .auth-right { display: none; }
+            .auth-left { padding: 2rem 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-left">
+            <div class="auth-logo">
+                <div class="auth-logo-icon">📦</div>
+                <div class="auth-logo-text">Invent<span>Pro</span></div>
+            </div>
+            <h1 class="auth-title">Nueva contraseña</h1>
+            <p class="auth-sub">Ingresa y confirma tu nueva contraseña</p>
+
+            <form action="{{ url_for('restablecer', token=token) }}" method="POST" class="auth-form" id="resetForm">
+                <label for="pass1">Nueva contraseña</label>
+                <div class="input-wrap">
+                    <span class="input-icon">🔑</span>
+                    <input type="password" name="password" id="pass1" placeholder="••••••••" required autocomplete="new-password">
+                </div>
+                <label for="pass2">Confirmar contraseña</label>
+                <div class="input-wrap">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" name="confirmar" id="pass2" placeholder="••••••••" required autocomplete="new-password">
+                </div>
+                <button type="submit" class="auth-btn">Restablecer contraseña</button>
+            </form>
+
+            <div class="auth-links">
+                <a href="/login">← Volver a iniciar sesión</a>
+            </div>
+        </div>
+        <div class="auth-right">
+            <h3>Seguridad ante todo</h3>
+            <p>Elige una contraseña segura que no hayas usado antes. Recomendamos al menos 8 caracteres con números y símbolos.</p>
+            <div class="auth-features">
+                <div class="auth-feat"><span class="auth-feat-icon">🔒</span> Enlace de un solo uso</div>
+                <div class="auth-feat"><span class="auth-feat-icon">🛡 </span> Cifrado SHA-256</div>
+                <div class="auth-feat"><span class="auth-feat-icon">⏳</span> El enlace expira en 1 hora</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('resetForm').addEventListener('submit', function(e) {
+        var p1 = document.getElementById('pass1').value;
+        var p2 = document.getElementById('pass2').value;
+        if (p1 !== p2) { e.preventDefault(); alert('Las contraseñas no coinciden'); }
+    });
+    </script>
+</body>
+</html>

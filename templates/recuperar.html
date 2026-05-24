@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Contraseña — InventPro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --blue: #7c3aed; --blue-dark: #4c1d95; --blue-light: #a78bfa;
+            --indigo: #6366f1; --violet: #8b5cf6; --blue-glow: rgba(124,58,237,0.35);
+            --bg: #03050a; --surface: rgba(15,22,48,0.85);
+            --border: rgba(139,92,246,0.08);
+            --text: #f0f4ff; --text-dim: rgba(200,215,255,0.55);
+        }
+        body {
+            font-family: 'DM Sans', sans-serif; background: var(--bg);
+            color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background-image: radial-gradient(ellipse at 30% 20%, rgba(124,58,237,0.06) 0%, transparent 60%),
+                              radial-gradient(ellipse at 70% 80%, rgba(99,102,241,0.04) 0%, transparent 50%);
+        }
+        .auth-container {
+            display: flex; align-items: stretch; max-width: 840px; width: 100%; margin: 2rem;
+            background: rgba(8,14,35,0.8); border: 1px solid rgba(139,92,246,0.08);
+            border-radius: 20px; overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+            backdrop-filter: blur(20px);
+        }
+        .auth-left {
+            flex: 1; padding: 3rem 2.5rem; display: flex; flex-direction: column;
+            justify-content: center;
+        }
+        .auth-logo {
+            display: flex; align-items: center; gap: 0.6rem; margin-bottom: 2rem;
+        }
+        .auth-logo-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; box-shadow: 0 4px 16px rgba(124,58,237,0.3);
+        }
+        .auth-logo-text { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.02em; }
+        .auth-logo-text span { color: var(--blue-light); }
+        .auth-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.3rem; }
+        .auth-sub { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 2rem; }
+        .auth-form { display: flex; flex-direction: column; gap: 0.8rem; }
+        .auth-form label { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+        .auth-form input {
+            width: 100%; padding: 0.9rem 1.1rem; border-radius: 12px;
+            border: 1px solid rgba(139,92,246,0.12);
+            background: rgba(255,255,255,0.03); color: var(--text);
+            font-family: "DM Sans", sans-serif; font-size: 0.9rem;
+            transition: all 0.25s cubic-bezier(0.22,1,0.36,1); outline: none;
+        }
+        .auth-form input:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(124,58,237,0.10), 0 0 30px rgba(124,58,237,0.04); transform: translateY(-1px); background: rgba(255,255,255,0.05); }
+        .auth-form input:hover { border-color: rgba(139,92,246,0.2); background: rgba(255,255,255,0.04); }
+        .auth-form input::placeholder { color: rgba(200,215,255,0.3); }
+        .auth-btn {
+            padding: 0.9rem; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+            color: #fff; font-weight: 700; font-size: 0.92rem; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.22,1,0.36,1); box-shadow: 0 8px 32px rgba(124,58,237,0.25);
+            font-family: "DM Sans", sans-serif; position: relative; overflow: hidden;
+        }
+        .auth-btn::before { content: ""; position: absolute; top: -60%; left: -60%; width: 220%; height: 220%; background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 60%); opacity: 0; transition: opacity 0.4s ease; }
+        .auth-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(124,58,237,0.35), 0 0 60px rgba(124,58,237,0.06); }
+        .auth-btn:hover::before { opacity: 1; }
+        .auth-links { margin-top: 1.5rem; text-align: center; }
+        .auth-links a { color: var(--text-dim); font-size: 0.78rem; text-decoration: none; transition: all 0.25s cubic-bezier(0.22,1,0.36,1); padding: 0.15rem 0; }
+        .auth-links a:hover { color: var(--blue-light); transform: translateY(-1px); }
+        .auth-right {
+            flex: 1; background: linear-gradient(135deg, rgba(124,58,237,0.04), rgba(99,102,241,0.04));
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 3rem; border-left: 1px solid rgba(139,92,246,0.06);
+        }
+        .auth-right h3 { font-size: 1.3rem; font-weight: 800; margin-bottom: 0.5rem; }
+        .auth-right p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.6; margin-bottom: 1.5rem; }
+        .auth-features { display: flex; flex-direction: column; gap: 0.8rem; }
+        .auth-feat { display: flex; align-items: center; gap: 0.7rem; font-size: 0.8rem; }
+        .auth-feat-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(99,102,241,0.08)); flex-shrink: 0; box-shadow: 0 2px 8px rgba(124,58,237,0.06); transition: all 0.3s ease; }
+        .auth-feat:hover .auth-feat-icon { transform: scale(1.1); background: linear-gradient(135deg, rgba(124,58,237,0.18), rgba(99,102,241,0.12)); }
+        .success-box { text-align:center; padding:2rem; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:16px; }
+        .success-box h3 { color:#4ade80; font-size:1.2rem; margin-bottom:0.5rem; }
+        .success-box p { color:rgba(200,215,255,0.55); font-size:0.85rem; }
+        .success-box a { display:inline-block; margin-top:1rem; color:var(--blue-light); font-size:0.85rem; text-decoration:none; }
+        @media (max-width: 700px) {
+            .auth-container { flex-direction: column; }
+            .auth-right { display: none; }
+            .auth-left { padding: 2rem 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-left">
+            <div class="auth-logo">
+                <div class="auth-logo-icon">📦</div>
+                <div class="auth-logo-text">Invent<span>Pro</span></div>
+            </div>
+            <h1 class="auth-title">Recuperar contraseña</h1>
+            <p class="auth-sub">Ingresa tu correo registrado para restablecer tu acceso</p>
+
+            {% if enviado %}
+            <div class="success-box">
+                <h3>✅ Correo enviado</h3>
+                <p>Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.</p>
+                <a href="/login">Volver al inicio de sesión</a>
+            </div>
+            {% else %}
+            <form action="{{ url_for('recuperar') }}" method="POST" class="auth-form">
+                <label for="correo">Correo electrónico</label>
+                <input type="email" name="correo" id="correo" placeholder="tu@empresa.com" required autocomplete="email">
+                <button type="submit" class="auth-btn">Enviar instrucciones</button>
+            </form>
+            <div class="auth-links">
+                <a href="/login">← Volver a iniciar sesión</a>
+            </div>
+            {% endif %}
+        </div>
+        <div class="auth-right">
+            <h3>¿Problemas con tu cuenta?</h3>
+            <p>Te enviaremos un enlace seguro para que puedas restablecer tu contraseña y recuperar el acceso a tu inventario.</p>
+            <div class="auth-features">
+                <div class="auth-feat"><span class="auth-feat-icon">🔒</span> Enlace seguro de un solo uso</div>
+                <div class="auth-feat"><span class="auth-feat-icon">⏳</span> Válido por 1 hora</div>
+                <div class="auth-feat"><span class="auth-feat-icon">📧</span> Llegará a tu correo Gmail</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

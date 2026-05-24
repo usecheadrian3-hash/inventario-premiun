@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Actividad</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+    <div class="orb orb1"></div><div class="orb orb2"></div>
+
+    <div class="topbar">
+        <div class="topbar-logo"><div class="topbar-logo-icon">🔰</div><span class="topbar-logo-text">Admin</span></div>
+        <div class="topbar-divider"></div>
+        <div class="topbar-center">
+            <a href="{{ url_for('admin_panel') }}" class="topbar-nav-btn">Dashboard</a>
+            <a href="{{ url_for('admin_usuarios') }}" class="topbar-nav-btn">Usuarios</a>
+            <a href="{{ url_for('admin_historial') }}" class="topbar-nav-btn">Historial</a>
+            <a href="{{ url_for('admin_actividad') }}" class="topbar-nav-btn active">Actividad</a>
+        </div>
+        <div class="topbar-right"><a href="{{ url_for('blog') }}" class="topbar-nav-btn">← Volver</a></div>
+    </div>
+
+    <div class="main">
+        <div class="page-header">
+            <div class="main-titulo">⚡ Actividad en Tiempo Real <small>Últimas 50 acciones</small></div>
+        </div>
+
+        <div class="section-card">
+            <div class="tabla-outer" style="max-height:600px;overflow-y:auto;">
+                <table>
+                    <thead><tr><th>ID</th><th>Usuario</th><th>Acción</th><th>Detalle</th><th>IP</th><th>Fecha</th></tr></thead>
+                    <tbody>
+                    {% for a in actividad %}
+                    <tr style="border-bottom:1px solid var(--border-soft);">
+                        <td><span class="id-chip">#{{ a[0] }}</span></td>
+                        <td><strong>{{ a[2] }}</strong></td>
+                        <td><span class="estado-badge badge-activo" style="font-size:0.65rem;">{{ a[3] }}</span></td>
+                        <td style="font-size:0.78rem;">{{ a[4] }}</td>
+                        <td style="font-size:0.72rem;color:var(--text-muted);">{{ a[5] }}</td>
+                        <td style="font-size:0.72rem;color:var(--text-muted);">{{ a[6] }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+    const c = document.getElementById('bgCanvas'), cx = c.getContext('2d');
+    function r() { c.width=window.innerWidth; c.height=window.innerHeight; }
+    r(); window.addEventListener('resize',r);
+    const stars = Array.from({length:80},()=>({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,r:Math.random()*1.2+0.2,phase:Math.random()*Math.PI*2,speed:Math.random()*0.005+0.002,color:['#ffffff','#aaddff','#d4aaff'][Math.floor(Math.random()*3)]}));
+    let t=0;(function loop(){t+=0.01;cx.clearRect(0,0,c.width,c.height);stars.forEach(s=>{const a=0.3+0.7*Math.abs(Math.sin(t*s.speed*12+s.phase));cx.beginPath();cx.arc(s.x%c.width,s.y%c.height,s.r,0,Math.PI*2);cx.fillStyle=s.color;cx.globalAlpha=a;cx.fill();});cx.globalAlpha=1;requestAnimationFrame(loop);})();
+    </script>
+</body>
+</html>

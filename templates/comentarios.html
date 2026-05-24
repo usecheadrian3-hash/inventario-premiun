@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comentarios</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .comentarios-wrap{position:relative;z-index:2;max-width:720px;margin:0 auto;padding:100px 1.5rem 4rem;}
+        .comentarios-titulo{text-align:center;font-size:2rem;font-weight:900;color:#fff;margin-bottom:0.5rem;}
+        .comentarios-sub{text-align:center;color:rgba(255,255,255,0.5);font-size:0.88rem;margin-bottom:2.5rem;letter-spacing:0.1em;}
+        .form-comentario{background:rgba(255,255,255,0.05);border:1px solid rgba(139,92,246,0.2);border-radius:16px;padding:1.8rem;margin-bottom:2.5rem;backdrop-filter:blur(10px);}
+        .form-comentario h3{color:#fff;font-size:1.1rem;margin-bottom:1.2rem;}
+        .form-comentario input,.form-comentario textarea{width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(139,92,246,0.25);border-radius:10px;color:#fff;font-size:0.9rem;padding:0.75rem 1rem;margin-bottom:0.85rem;outline:none;font-family:'DM Sans',sans-serif;transition:border-color 0.2s;}
+        .form-comentario input::placeholder,.form-comentario textarea::placeholder{color:rgba(180,200,255,0.35);}
+        .form-comentario input:focus,.form-comentario textarea:focus{border-color:rgba(167,139,250,0.6);}
+        .form-comentario textarea{height:110px;resize:none;}
+        .btn-enviar-com{background:linear-gradient(135deg,#7c3aed,#4c1d95);color:#fff;border:none;border-radius:50px;padding:0.75rem 2rem;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 6px 22px rgba(124,58,237,0.4);font-family:'DM Sans',sans-serif;}
+        .btn-enviar-com:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(124,58,237,0.55);}
+        .lista-comentarios{display:flex;flex-direction:column;gap:1.1rem;}
+        .comentario-card{background:rgba(255,255,255,0.05);border:1px solid rgba(139,92,246,0.15);border-radius:14px;padding:1.3rem 1.5rem;backdrop-filter:blur(8px);transition:border-color 0.2s;}
+        .comentario-card:hover{border-color:rgba(167,139,250,0.35);}
+        .com-header{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;}
+        .com-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:#fff;flex-shrink:0;}
+        .com-nombre{font-weight:600;color:#fff;font-size:0.9rem;}
+        .com-fecha{font-size:0.75rem;color:rgba(255,255,255,0.35);margin-left:auto;}
+        .com-texto{color:rgba(255,255,255,0.72);font-size:0.88rem;line-height:1.6;}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    </style>
+</head>
+<body>
+    <div class="fondo"></div>
+    <div class="overlay"></div>
+
+    <div class="comentarios-wrap">
+        <h1 class="comentarios-titulo">💬 Comentarios</h1>
+        <p class="comentarios-sub">Lo que dice la comunidad</p>
+
+        <form class="form-comentario" action="{{ url_for('guardar_comentario') }}" method="POST">
+            <h3>Deja tu comentario</h3>
+            <input type="text" name="nombre" placeholder="Tu nombre" required autocomplete="name">
+            <textarea name="texto" placeholder="¿Qué piensas del sistema?" required autocomplete="off"></textarea>
+            <button type="submit" class="btn-enviar-com">✉💬 Publicar comentario</button>
+        </form>
+
+        <div class="lista-comentarios">
+            {% for c in comentarios %}
+            <div class="comentario-card">
+                <div class="com-header">
+                    <div class="com-avatar">{{ c[1][0]|upper }}</div>
+                    <span class="com-nombre">{{ c[1] }}</span>
+                    <span class="com-fecha">{{ c[3] }}</span>
+                </div>
+                <p class="com-texto">{{ c[2] }}</p>
+            </div>
+            {% endfor %}
+            {% if not comentarios %}
+            <p style="text-align:center;color:rgba(255,255,255,0.3);font-size:0.9rem;">Sé el primero en comentar 🌟</p>
+            {% endif %}
+        </div>
+
+        <a href="/" class="volver-btn" style="display:inline-block;margin-top:2rem;color:rgba(255,255,255,0.5);font-size:0.85rem;text-decoration:none;transition:color 0.2s;">← Volver al inicio</a>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

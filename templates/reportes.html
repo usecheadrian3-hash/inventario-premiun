@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Empresariales</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas><div class="orb orb1"></div><div class="orb orb2"></div>
+
+    <div class="topbar">
+        <div class="topbar-logo"><div class="topbar-logo-icon">📈</div><span class="topbar-logo-text">Reportes</span></div>
+        <div class="topbar-divider"></div>
+        <div class="topbar-center">
+            <a href="{{ url_for('blog') }}" class="topbar-nav-btn">← Dashboard</a>
+            <a href="{{ url_for('ver_ventas') }}" class="topbar-nav-btn">Ventas</a>
+            <a href="{{ url_for('reportes') }}" class="topbar-nav-btn active">Reportes</a>
+        </div>
+        <div class="topbar-right">
+            <button class="btn-recibo btn-recibo-pdf" onclick="exportarReportePDF()" style="padding:0.4rem 1rem;font-size:0.75rem;">📄 Exportar PDF</button>
+            <button class="btn-recibo btn-recibo-excel" onclick="exportarReporteExcel()" style="padding:0.4rem 1rem;font-size:0.75rem;">📊 Exportar Excel</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="page-header"><div class="main-titulo">📈 Reportes Empresariales <small>Análisis completo del negocio</small></div></div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-icon">📦</div><div class="kpi-label" id="r-productos">Productos</div><div class="kpi-value" id="r-productos-val">—</div></div>
+            <div class="kpi-card success"><div class="kpi-icon">💰</div><div class="kpi-label">Ventas totales</div><div class="kpi-value" id="r-ventas-val" style="font-size:1.2rem;">—</div></div>
+            <div class="kpi-card danger"><div class="kpi-icon">💸</div><div class="kpi-label">Gastos</div><div class="kpi-value" id="r-gastos-val" style="font-size:1.2rem;">—</div></div>
+            <div class="kpi-card info"><div class="kpi-icon">👥</div><div class="kpi-label">Clientes</div><div class="kpi-value" id="r-clientes-val">—</div></div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-card"><h3>Ventas vs Gastos</h3><canvas id="chart-reporte1" height="200"></canvas></div>
+            <div class="chart-card"><h3>Resumen Financiero</h3><canvas id="chart-reporte2" height="200"></canvas></div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-card-header"><div class="section-card-icon">🧾</div><span class="section-card-title">Últimas Ventas</span></div>
+            <div class="tabla-outer" style="max-height:300px;overflow-y:auto;">
+                <table><thead><tr><th>ID</th><th>Cliente</th><th>Total</th><th>Método</th><th>Fecha</th></tr></thead>
+                <tbody>{% for v in ventas %}<tr><td><span class="id-chip">#{{ v[0] }}</span></td><td>{{ v[4] }}</td><td><strong>${{ "%.2f"|format(v[5]) }}</strong></td><td><span class="estado-badge badge-activo" style="font-size:0.65rem;">{{ v[8] }}</span></td><td style="font-size:0.72rem;">{{ v[9] }}</td></tr>{% endfor %}</tbody></table>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+    var exportando = false;
+
+    function initEstrellas(){
+        var c=document.getElementById('bgCanvas'),cx=c.getContext('2d');
+        function r(){c.width=window.innerWidth;c.height=window.innerHeight;}
+        r();window.addEventListener('resize',r);
+        var stars=Array.from({length:120},function(){return{x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,r:Math.random()*1.2+0.2,phase:Math.random()*Math.PI*2,speed:Math.random()*0.005+0.002,color:['#ffffff','#aaddff','#d4aaff'][Math.floor(Math.random()*3)]};});
+        var t=0;
+        (function loop(){
+            t+=0.01;
+            cx.clearRect(0,0,c.width,c.height);
+            stars.forEach(function(s){
+                var a=0.3+0.7*Math.abs(Math.sin(t*s.speed*12+s.phase));
+                cx.beginPath();cx.arc(s.x%c.width,s.y%c.height,s.r,0,Math.PI*2);
+                cx.fillStyle=s.color;cx.globalAlpha=a;cx.fill();
+            });
+            cx.globalAlpha=1;requestAnimationFrame(loop);
+        })();
+    }
+
+    function cargarReportes(){
+        fetch('/api/reporte_general').then(function(r){return r.json();}).then(function(d){
+            if(!d) return;
+            document.getElementById('r-productos-val').textContent = d.productos.total;
+            document.getElementById('r-ventas-val').textContent = '$'+Math.round(d.ventas.monto).toLocaleString('es-CO');
+            document.getElementById('r-gastos-val').textContent = '$'+Math.round(d.gastos.monto).toLocaleString('es-CO');
+            document.getElementById('r-clientes-val').textContent = d.clientes;
+            if(typeof Chart !== 'undefined'){
+                var ctx1=document.getElementById('chart-reporte1');
+                if(ctx1) new Chart(ctx1,{type:'bar',data:{labels:['Ventas','Gastos','Ganancia Neta'],datasets:[{data:[d.ventas.monto,d.gastos.monto,d.ventas.monto-d.gastos.monto],backgroundColor:['rgba(34,197,94,0.6)','rgba(239,68,68,0.6)','rgba(124,58,237,0.6)'],borderColor:['#22c55e','#ef4444','#7c3aed'],borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+                var ctx2=document.getElementById('chart-reporte2');
+                if(ctx2) new Chart(ctx2,{type:'doughnut',data:{labels:['Productos','Ventas','Gastos','Clientes'],datasets:[{data:[d.productos.total,d.ventas.total,d.gastos.total,d.clientes],backgroundColor:['#7c3aed','#22c55e','#ef4444','#8b5cf6'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:'rgba(255,255,255,0.7)',font:{size:10}}}}}});
+            }
+        }).catch(function(){});
+    }
+
+    document.addEventListener('DOMContentLoaded',function(){initEstrellas();cargarReportes();});
+
+    function btnEstado(btn, ocupado, txt){
+        if(!btn) return;
+        if(ocupado){btn.disabled=true;btn._txt=btn.textContent;btn.textContent=txt||'⏳ Exportando…';}
+        else{btn.disabled=false;btn.textContent=btn._txt||btn.textContent;}
+    }
+
+    function esperarCDN(nombre, tiempo){
+        return new Promise(function(resolve){
+            var inicio = Date.now();
+            function check(){
+                try{
+                    if(nombre==='jspdf' && typeof window.jspdf!=='undefined' && window.jspdf.jsPDF){resolve(true);return;}
+                    if(nombre==='xlsx' && typeof XLSX!=='undefined'){resolve(true);return;}
+                }catch(e){}
+                if(Date.now()-inicio>(tiempo||5000)){resolve(false);return;}
+                setTimeout(check,200);
+            }
+            check();
+        });
+    }
+
+    window.exportarReportePDF = function(){
+        if(exportando) return;
+        exportando = true;
+        var btn = document.querySelector('.btn-recibo-pdf');
+        btnEstado(btn, true);
+        esperarCDN('jspdf',8000).then(function(listo){
+            if(!listo){
+                btnEstado(btn, false);
+                exportando = false;
+                if(typeof mostrarAlerta==='function') mostrarAlerta('Error: jsPDF no cargó','error');
+                return;
+            }
+            var doc = new window.jspdf.jsPDF();
+            doc.setFontSize(18);doc.text('Reporte Empresarial',105,20,{align:'center'});
+            doc.setFontSize(11);doc.text('Sistema de Inventario - '+new Date().toLocaleDateString('es-CO'),105,28,{align:'center'});
+            doc.setFontSize(12);doc.text('Resumen:',20,40);
+            doc.setFontSize(10);
+            fetch('/api/reporte_general').then(function(r){return r.json();}).then(function(d){
+                var y=48;
+                var lineas=[
+                    '- Productos en inventario: '+d.productos.total,
+                    '- Valor total del stock: $'+Math.round(d.productos.valor_total).toLocaleString('es-CO'),
+                    '- Ventas realizadas: '+d.ventas.total+' por $'+Math.round(d.ventas.monto).toLocaleString('es-CO'),
+                    '- Gastos registrados: '+d.gastos.total+' por $'+Math.round(d.gastos.monto).toLocaleString('es-CO'),
+                    '- Clientes registrados: '+d.clientes,
+                    '- Ganancia neta estimada: $'+Math.round(d.ventas.monto-d.gastos.monto).toLocaleString('es-CO')
+                ];
+                lineas.forEach(function(l){
+                    var lines = doc.splitTextToSize(l,170);
+                    doc.text(lines,20,y);
+                    y += 7 * lines.length;
+                });
+                doc.save('reporte_empresarial_'+new Date().toISOString().slice(0,10)+'.pdf');
+                btnEstado(btn, false);
+                exportando = false;
+                if(typeof mostrarAlerta==='function') mostrarAlerta('PDF exportado','success');
+            }).catch(function(){
+                btnEstado(btn, false);
+                exportando = false;
+                if(typeof mostrarAlerta==='function') mostrarAlerta('Error al generar PDF','error');
+            });
+        });
+    };
+
+    window.exportarReporteExcel = function(){
+        if(exportando) return;
+        exportando = true;
+        var btn = document.querySelector('.btn-recibo-excel');
+        btnEstado(btn, true);
+        esperarCDN('xlsx',8000).then(function(listo){
+            if(!listo){
+                btnEstado(btn, false);
+                exportando = false;
+                if(typeof mostrarAlerta==='function') mostrarAlerta('Error: XLSX no cargó','error');
+                return;
+            }
+            fetch('/api/reporte_general').then(function(r){return r.json();}).then(function(d){
+                var wb=XLSX.utils.book_new();
+                var data=[['Reporte Empresarial'],['Generado:',new Date().toLocaleString('es-CO')],[],['Métrica','Valor'],['Productos totales',d.productos.total],['Stock total',d.productos.stock],['Precio promedio','$'+Number(d.productos.precio_promedio).toFixed(2)],['Valor del inventario','$'+Number(d.productos.valor_total).toFixed(2)],['Ventas totales',d.ventas.total],['Monto ventas','$'+Number(d.ventas.monto).toFixed(2)],['Gastos totales',d.gastos.total],['Monto gastos','$'+Number(d.gastos.monto).toFixed(2)],['Clientes',d.clientes],['Ganancia neta','$'+(Number(d.ventas.monto)-Number(d.gastos.monto)).toFixed(2)],[]];
+                var ws=XLSX.utils.aoa_to_sheet(data);
+                ws['!cols']=[{wch:25},{wch:20}];
+                XLSX.utils.book_append_sheet(wb,ws,'Reporte');
+                XLSX.writeFile(wb,'reporte_empresarial_'+new Date().toISOString().slice(0,10)+'.xlsx');
+                btnEstado(btn, false);
+                exportando = false;
+                if(typeof mostrarAlerta==='function') mostrarAlerta('Excel exportado','success');
+            }).catch(function(){
+                btnEstado(btn, false);
+                exportando = false;
+                if(typeof mostrarAlerta==='function') mostrarAlerta('Error al generar Excel','error');
+            });
+        });
+    };
+    </script>
+</body>
+</html>

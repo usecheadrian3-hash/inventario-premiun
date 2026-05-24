@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .popup-role {
+            font-size: 0.65rem;
+            color: var(--blue-light);
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-top: 0.15rem;
+        }
+        .color-titulo {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.13em;
+            color: var(--text-muted);
+            margin-bottom: 0.55rem;
+        }
+        .admin-nav-btn {
+            background: rgba(139,92,246,0.15);
+            border-color: rgba(139,92,246,0.3);
+            color: #a78bfa;
+        }
+        .precio-iva-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px;
+            padding: 0.5rem 0.9rem;
+        }
+        .precio-iva-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .precio-iva-value {
+            font-weight: 700;
+            color: var(--blue-light);
+        }
+        .kpi-value-lg {
+            font-size: 1.2rem;
+        }
+        .etiquetas-cell {
+            font-size: 0.75rem;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+</head>
+<body data-user-id="{{ usuario[0] }}">
+<canvas id="bgCanvas"></canvas>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+<div class="ambient-orb a1"></div>
+<div class="ambient-orb a2"></div>
+<div class="ambient-orb a3"></div>
+<!-- TOPBAR -->
+<div class="topbar">
+    <div class="topbar-logo">
+        <div class="topbar-logo-icon">📦</div>
+        <span class="topbar-logo-text">Inventario</span>
+    </div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-center">
+        <button class="topbar-nav-btn active">Dashboard</button>
+        <button class="topbar-nav-btn" onclick="document.getElementById('formSection').scrollIntoView({behavior:'smooth'})">Agregar</button>
+        <button class="topbar-nav-btn" onclick="document.getElementById('tableSection').scrollIntoView({behavior:'smooth'})">Productos</button>
+        <button class="topbar-nav-btn" onclick="document.getElementById('chartsSection').scrollIntoView({behavior:'smooth'})">Gráficas</button>
+    </div>
+    <div class="topbar-right">
+        <div class="perfil-btn" id="perfilBtn" onclick="if(event.target.closest('#perfilPopup')) return; document.getElementById('perfilPopup').classList.toggle('abierto'); event.stopPropagation();">
+            <div class="perfil-avatar" id="avatarTopbar">{{ usuario[1][0]|upper }}</div>
+            <span class="perfil-nombre-btn">{{ usuario[1] }} <span class="role-badge">{{ usuario[6] }}</span></span>
+            <!-- POPUP -->
+            <div class="perfil-popup" id="perfilPopup">
+                <div class="popup-header">
+                    <div class="popup-avatar">{{ usuario[1][0]|upper }}</div>
+                    <div>
+                        <div class="popup-info-nombre">{{ usuario[1] }} {{ usuario[2] }}</div>
+                        <div class="popup-info-correo">{{ usuario[3] }}</div>
+                        <div class="popup-role">{{ usuario[6] }}</div>
+                    </div>
+                </div>
+                <div class="popup-filas">
+                    <div class="popup-fila"><span>Nombre</span><span>{{ usuario[1] }}</span></div>
+                    <div class="popup-fila"><span>Apellido</span><span>{{ usuario[2] }}</span></div>
+                    <div class="popup-fila"><span>Correo</span><span>{{ usuario[3] }}</span></div>
+                    <div class="popup-fila"><span>Rol</span><span>{{ usuario[6]|capitalize }}</span></div>
+                    <div class="popup-fila"><span>Registrado</span><span>{{ usuario[5] if usuario|length > 5 and usuario[5] else 'N/A' }}</span></div>
+                </div>
+                <div class="popup-sec-titulo">Apariencia</div>
+                <div class="popup-modos">
+                    <button class="btn-modo" id="btnOscuro" onclick="setModo('oscuro')">🌙 Oscuro</button>
+                    <button class="btn-modo" id="btnClaro" onclick="setModo('claro')">☀️ Claro</button>
+                </div>
+                <div class="color-titulo">Color del sistema</div>
+                <div class="color-presets" id="colorPresets">
+                    <div class="color-dot" style="background:#7c3aed" data-color="#7c3aed" onclick="aplicarColor('#7c3aed','#4c1d95')"></div>
+                    <div class="color-dot" style="background:#8b5cf6" data-color="#8b5cf6" onclick="aplicarColor('#8b5cf6','#6d28d9')"></div>
+                    <div class="color-dot" style="background:#ec4899" data-color="#ec4899" onclick="aplicarColor('#ec4899','#be185d')"></div>
+                    <div class="color-dot" style="background:#10b981" data-color="#10b981" onclick="aplicarColor('#10b981','#059669')"></div>
+                    <div class="color-dot" style="background:#f97316" data-color="#f97316" onclick="aplicarColor('#f97316','#c2410c')"></div>
+                    <div class="color-dot" style="background:#eab308" data-color="#eab308" onclick="aplicarColor('#eab308','#a16207')"></div>
+                    <div class="color-dot" style="background:#ef4444" data-color="#ef4444" onclick="aplicarColor('#ef4444','#b91c1c')"></div>
+                    <div class="color-dot" style="background:#06b6d4" data-color="#06b6d4" onclick="aplicarColor('#06b6d4','#0e7490')"></div>
+                </div>
+                <button class="btn-personalizar" onclick="abrirRuedaColor()">🎨 Personalización avanzada</button>
+                <a href="{{ url_for('perfil') }}" class="btn-personalizar">👤 Mi perfil</a>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion">🚪 Cerrar sesión</a>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- MAIN -->
+<div class="main">
+    <div class="page-header">
+        <div class="main-titulo">
+            Panel de Inventario
+            <small>Bienvenido, {{ usuario[1] }} · {{ usuario[6]|capitalize }}</small>
+        </div>
+        <div class="header-actions">
+            <button class="btn-recibo btn-recibo-pdf"   id="btnPDF" onclick="abrirModalRecibo('pdf')">📄 Exportar PDF</button>
+            <button class="btn-recibo btn-recibo-excel" id="btnExcel" onclick="abrirModalRecibo('excel')">📊 Exportar Excel</button>
+        </div>
+    </div>
+    <!-- NAV DASHBOARD -->
+    <div class="nav-dashboard">
+        <a href="{{ url_for('blog') }}" class="nav-dash-btn active">📊 Dashboard</a>
+        {% if usuario[6] == 'admin' %}
+        <a href="{{ url_for('dashboard_premium') }}" class="nav-dash-btn">✦ Premium</a>
+        {% endif %}
+        <a href="{{ url_for('ver_ventas') }}" class="nav-dash-btn">🧾 Ventas</a>
+        <a href="{{ url_for('ver_compras') }}" class="nav-dash-btn">📦 Compras</a>
+        <a href="{{ url_for('ver_clientes') }}" class="nav-dash-btn">👥 Clientes</a>
+        <a href="{{ url_for('ver_proveedores') }}" class="nav-dash-btn">📦 Proveedores</a>
+        <a href="{{ url_for('ver_categorias') }}" class="nav-dash-btn">📂 Categorías</a>
+        <a href="{{ url_for('ver_gastos') }}" class="nav-dash-btn">💰 Gastos</a>
+        <a href="{{ url_for('reportes') }}" class="nav-dash-btn">📈 Reportes</a>
+        {% if usuario[6] == 'admin' %}
+        <a href="{{ url_for('admin_panel') }}" class="nav-dash-btn admin-nav-btn">🔰 Admin</a>
+        {% endif %}
+    </div>
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon">📦</div>
+            <div class="kpi-label">Total productos</div>
+            <div class="kpi-value" id="kpi-total">—</div>
+            <div class="kpi-sub">en inventario</div>
+        </div>
+        <div class="kpi-card danger">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-label">Stock bajo</div>
+            <div class="kpi-value" id="kpi-lowstock">—</div>
+            <div class="kpi-sub">requieren reposición</div>
+        </div>
+        <div class="kpi-card success">
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-label">Activos</div>
+            <div class="kpi-value" id="kpi-activos">—</div>
+            <div class="kpi-sub">productos activos</div>
+        </div>
+        <div class="kpi-card info">
+            <div class="kpi-icon">💲</div>
+            <div class="kpi-label">Valor + IVA</div>
+            <div class="kpi-value" id="kpi-value" style="font-size:1.2rem">—</div>
+            <div class="kpi-sub" id="kpi-value-siniva">valor total del inventario</div>
+        </div>
+    </div>
+    <!-- WEEKLY GOALS -->
+    <div class="goal-card">
+        <div class="goal-hdr"><span class="goal-lbl">🎯 Meta Semanal de Ventas</span><span class="goal-pct">68%</span></div>
+        <div class="goal-bar-bg"><div class="goal-bar-fill" data-target="68%" style="width:0%"></div></div>
+        <div class="goal-sub"><span>${{ "{:,.0f}".format(ventas_total // 2) }} recaudado</span><span>Meta: ${{ "{:,.0f}".format(ventas_total) }}</span></div>
+    </div>
+    <!-- CHARTS SECTION -->
+    <div class="section-card" id="chartsSection">
+        <div class="section-card-header">
+            <div class="section-card-icon">📊</div>
+            <span class="section-card-title">Estadísticas y Gráficas</span>
+            <span class="section-card-sub">Análisis automático de inventario</span>
+        </div>
+        <div class="section-card-body">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>Productos con mayor cantidad</h3>
+                    <canvas id="chart-top-productos" height="220"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Más vendidos</h3>
+                    <canvas id="chart-mas-vendidos" height="220"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Menos vendidos</h3>
+                    <canvas id="chart-menos-vendidos" height="220"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Ventas diarias (últimos 7 días)</h3>
+                    <canvas id="chart-ventas" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- FORM -->
+    <div class="section-card" id="formSection">
+        <div class="section-card-header">
+            <div class="section-card-icon">➕</div>
+            <span class="section-card-title">Agregar Producto</span>
+            <span class="section-card-sub">Completa los campos para registrar</span>
+        </div>
+        <div class="section-card-body">
+            <form class="form-agregar" action="{{ url_for('agregar_producto') }}" method="POST">
+                <div class="form-grid">
+                    <input type="text"   name="nombre"      placeholder="Nombre del producto" required autocomplete="off">
+                    <input type="text"   name="descripcion" placeholder="Descripción" required autocomplete="off">
+                    <input type="number" name="cantidad"     placeholder="Cantidad" required min="0" autocomplete="off">
+                    <input type="number" name="stock_minimo" placeholder="Stock mínimo" required min="0" autocomplete="off">
+                    <input type="number" name="precio"       placeholder="Precio unitario" required min="0" step="0.01" autocomplete="off">
+                    <input type="number" name="iva"          placeholder="IVA %" value="19" min="0" max="100" step="0.01" autocomplete="off">
+                    <div class="precio-iva-box">
+                        <span class="precio-iva-label">Precio + IVA:</span>
+                        <span id="precio-con-iva-display" class="precio-iva-value">$0.00</span>
+                    </div>
+                    <input type="text"   name="categoria"   placeholder="Categoría" list="lista-categorias" autocomplete="off">
+                    <datalist id="lista-categorias">{% for c in categorias %}<option value="{{ c[1] }}">{% endfor %}</datalist>
+                    <input type="text"   name="proveedor"   placeholder="Proveedor" list="lista-proveedores" autocomplete="off">
+                    <datalist id="lista-proveedores">{% for p in proveedores %}<option value="{{ p[1] }}">{% endfor %}</datalist>
+                    <input type="text"   name="etiquetas"   placeholder="Etiquetas (separadas por coma)" autocomplete="off">
+                    <input type="date"   name="fecha"       required autocomplete="off">
+                    <select name="estado">
+                        <option value="" disabled selected>Estado</option>
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                        <option value="Agotado">Agotado</option>
+                    </select>
+                </div>
+                <div class="form-btns">
+                    <button type="submit" class="btn-agregar">✦ Agregar producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- TABLE -->
+    <div class="section-card" id="tableSection">
+        <div class="lista-header">
+            <div class="lista-header-left">
+                <div class="section-card-icon">📋</div>
+                <h2>Lista de Productos</h2>
+            </div>
+            <input type="text" id="buscador" placeholder="Buscar productos…" autocomplete="search">
+        </div>
+        <div class="tabla-outer">
+            <table id="tablaInventario">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th style="text-align:left">Nombre</th>
+                        <th>Desc.</th>
+                        <th>Cant.</th>
+                        <th>Mín.</th>
+                        <th>Precio</th>
+                        <th>IVA</th>
+                        <th>Precio+IVA</th>
+                        <th>Categoría</th>
+                        <th>Proveedor</th>
+                        <th>Etiquetas</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in productos %}
+                {% set precio_con_iva = item[5] + (item[5] * (item[10] if item|length > 10 else 19) / 100) %}
+                <tr class="producto"
+                    data-id="{{ item[0] }}"
+                    data-nombre="{{ item[1] }}"
+                    data-descripcion="{{ item[2] }}"
+                    data-cantidad="{{ item[3] }}"
+                    data-stock="{{ item[4] }}"
+                    data-precio="{{ item[5] }}"
+                    data-iva="{{ item[10] if item|length > 10 else 19 }}"
+                    data-categoria="{{ item[6] }}"
+                    data-proveedor="{{ item[7] }}"
+                    data-fecha="{{ item[8] }}"
+                    data-estado="{{ item[9] }}"
+                    data-etiquetas="{{ item[11] if item|length > 11 else '' }}">
+                    <td><span class="id-chip">#{{ item[0] }}</span></td>
+                    <td>{{ item[1] }}</td>
+                    <td>{{ item[2] }}</td>
+                    <td>{% if item[3] <= item[4] %}<span class="stock-bajo">{{ item[3] }} ⚠</span>{% else %}{{ item[3] }}{% endif %}</td>
+                    <td>{{ item[4] }}</td>
+                    <td>${{ "%.2f"|format(item[5]) }}</td>
+                    <td>{{ "%.1f"|format(item[10] if item|length > 10 else 19) }}%</td>
+                    <td><strong>${{ "%.2f"|format(precio_con_iva) }}</strong></td>
+                    <td>{{ item[6] }}</td>
+                    <td>{{ item[7] }}</td>
+                    <td class="etiquetas-cell">{{ item[11] if item|length > 11 and item[11] else '—' }}</td>
+                    <td>{{ item[8] }}</td>
+                    <td>
+                        {% if item[9] == 'Activo' %}
+                        <span class="estado-badge badge-activo">Activo</span>
+                        {% elif item[9] == 'Inactivo' %}
+                        <span class="estado-badge badge-inactivo">Inactivo</span>
+                        {% else %}
+                        <span class="estado-badge badge-agotado">{{ item[9] }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="acciones-td">
+                            <button class="btn-editar" onclick="abrirEditar(this)"> Editar</button>
+                            <button class="btn-label" data-id="{{ item[0] }}" data-nombre="{{ item[1] }}" data-precio="{{ item[5] }}" onclick="imprimirEtiqueta(this.dataset.id,this.dataset.nombre,this.dataset.precio)">🏷️</button>
+                            <a href="#" class="btn-eliminar" data-href="{{ url_for('eliminar', id=item[0]) }}" onclick="if(confirm('\u00bfSeguro que deseas eliminar este producto?')){window.location.href=this.dataset.href}">🗑</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- EDIT MODAL -->
+<div class="modal-edit-overlay" id="modalEditOverlay">
+    <div class="modal-edit-box">
+        <h3>✏️ Editar Producto</h3>
+        <form id="formEditar" method="POST">
+            <div class="edit-grid">
+                <div class="edit-grupo"><label>Nombre</label><input type="text" name="nombre" id="edit-nombre" required autocomplete="off"></div>
+                <div class="edit-grupo"><label>Descripción</label><input type="text" name="descripcion" id="edit-descripcion" required autocomplete="off"></div>
+                <div class="edit-grupo"><label>Cantidad</label><input type="number" name="cantidad" id="edit-cantidad" required min="0" autocomplete="off"></div>
+                <div class="edit-grupo"><label>Stock mínimo</label><input type="number" name="stock_minimo" id="edit-stock" required min="0" autocomplete="off"></div>
+                <div class="edit-grupo"><label>Precio</label><input type="number" name="precio" id="edit-precio" required min="0" step="0.01" autocomplete="off"></div>
+                <div class="edit-grupo"><label>IVA %</label><input type="number" name="iva" id="edit-iva" value="19" min="0" max="100" step="0.01" autocomplete="off"></div>
+                <div class="edit-grupo"><label>Categoría</label><input type="text" name="categoria" id="edit-categoria" required autocomplete="off"></div>
+                <div class="edit-grupo"><label>Proveedor</label><input type="text" name="proveedor" id="edit-proveedor" required autocomplete="off"></div>
+                <div class="edit-grupo"><label>Etiquetas</label><input type="text" name="etiquetas" id="edit-etiquetas" placeholder="Separa con coma" autocomplete="off"></div>
+                <div class="edit-grupo"><label>Fecha</label><input type="date" name="fecha" id="edit-fecha" required autocomplete="off"></div>
+                <div class="edit-grupo">
+                    <label>Estado</label>
+                    <select name="estado" id="edit-estado">
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                        <option value="Agotado">Agotado</option>
+                    </select>
+                </div>
+            </div>
+            <div class="edit-btns">
+                <button type="submit" class="btn-guardar-edit">💾 Guardar cambios</button>
+                <button type="button" class="btn-cancelar-edit" onclick="cerrarEditar()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- RECIBO MODAL -->
+<div class="modal-recibo-overlay" id="modalReciboOverlay">
+    <div class="modal-recibo">
+        <h3 id="modalReciboTitulo">📄 Generar Recibo</h3>
+        <p>Completa los datos del recibo</p>
+        <div class="recibo-form-grupo"><label>Nombre del cliente</label><input type="text" id="recibo-cliente" placeholder="Ej: Juan Perez" autocomplete="name"></div>
+        <div class="recibo-form-grupo"><label>Numero de recibo</label><input type="text" id="recibo-numero" placeholder="Ej: 000124" autocomplete="off"></div>
+        <div class="recibo-form-grupo"><label>Nombre de la tienda</label><input type="text" id="recibo-tienda" placeholder="Ej: TIENDA XYZ" value="TIENDA XYZ" autocomplete="organization"></div>
+        <div class="recibo-form-grupo"><label>NIT</label><input type="text" id="recibo-nit" placeholder="000.000.000-0" value="000.000.000-0" autocomplete="off"></div>
+        <div class="recibo-items-titulo">Selecciona los productos (con IVA incluido)</div>
+        <div class="tabla-outer recibo-tabla-wrap">
+            <table class="recibo-tabla" id="reciboCheckTable">
+                <thead>
+                    <tr>
+                        <th style="width:38px;text-align:center;"></th>
+                        <th style="text-align:left">Producto</th>
+                        <th style="width:130px;text-align:right;">Precio + IVA</th>
+                    </tr>
+                </thead>
+                <tbody id="reciboCheckLista"></tbody>
+            </table>
+        </div>
+        <div class="recibo-btns-generar" id="reciboBtnsGenerar"></div>
+        <button class="btn-cerrar-recibo" onclick="cerrarModalRecibo()">Cancelar</button>
+    </div>
+</div>
+<!-- COLOR WHEEL MODAL -->
+<div class="modal-color-overlay" id="modalColorOverlay">
+    <div class="modal-color-box">
+        <h3>🎨 Personalización avanzada</h3>
+        <p>Haz clic en el círculo para elegir un color</p>
+        <canvas id="colorWheel" width="200" height="200"></canvas>
+        <div class="color-preview-row">
+            <div id="colorPreviewCircle"></div>
+            <input type="text" id="colorHexInput" value="#7c3aed" placeholder="#HEX" autocomplete="off">
+        </div>
+        <div class="color-modal-btns">
+            <button class="btn-guardar-edit" onclick="aplicarColorPersonalizado()">✅ Aplicar</button>
+            <button class="btn-cancelar-edit" onclick="cerrarRuedaColor()">Cancelar</button>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='script.js') }}?v=2"></script>
+<script>
+
+const USUARIO_KEY = "inv_{{ usuario[0] }}";
+
+// Stars canvas
+
+const canvas = document.getElementById('bgCanvas');
+
+const ctx = canvas.getContext('2d');
+
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+
+resize(); window.addEventListener('resize', resize);
+
+const stars = Array.from({ length: 180 }, () => ({
+
+    x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight,
+
+    r: Math.random()*1.3+0.2, phase: Math.random()*Math.PI*2,
+
+    speed: Math.random()*0.005+0.002,
+
+    color: ['#ffffff','#aaddff','#d4aaff'][Math.floor(Math.random()*3)]
+
+}));
+
+let t = 0;
+
+(function loop() {
+
+    t += 0.01; ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    stars.forEach(s => {
+
+        const a = 0.3+0.7*Math.abs(Math.sin(t*s.speed*12+s.phase));
+
+        ctx.beginPath(); ctx.arc(s.x%canvas.width,s.y%canvas.height,s.r,0,Math.PI*2);
+
+        ctx.fillStyle=s.color; ctx.globalAlpha=a; ctx.fill();
+
+    }); ctx.globalAlpha=1; requestAnimationFrame(loop);
+
+})();
+
+// KPI Calculator
+calcularKPIs();
+// Charts
+initDashboardCharts();
+
+var tipoReciboActual = 'pdf';
+
+function getReciboData() {
+    var cliente = (document.getElementById('recibo-cliente')?.value || '').trim() || 'Cliente';
+    var numero = (document.getElementById('recibo-numero')?.value || '').trim() || '000001';
+    var tienda = (document.getElementById('recibo-tienda')?.value || '').trim() || 'TIENDA XYZ';
+    var nit = (document.getElementById('recibo-nit')?.value || '').trim() || '000.000.000-0';
+    var fecha = new Date().toLocaleDateString('es-CO');
+    var items = [];
+    document.querySelectorAll('#reciboCheckLista input[type="checkbox"]:checked').forEach(function(c) {
+        var tr = c.closest('tr');
+        items.push({ nombre: tr ? tr.dataset.nombre : c.dataset.nombre, precio: Number(c.dataset.precio || tr?.dataset?.precio || 0), cantidad: 1 });
+    });
+    return { cliente: cliente, numero: numero, tienda: tienda, nit: nit, fecha: fecha, items: items };
+}
+
+function abrirModalRecibo(tipo) {
+    tipoReciboActual = tipo || 'pdf';
+    var lista = document.getElementById('reciboCheckLista');
+    if (!lista) return;
+    var titulo = document.getElementById('modalReciboTitulo');
+    if (titulo) titulo.textContent = tipo === 'pdf' ? '📄 Generar Recibo PDF' : '📊 Generar Recibo Excel';
+    lista.innerHTML = '';
+    document.querySelectorAll('#tablaInventario tbody tr.producto').forEach(function(fila) {
+        if (!fila.dataset.id) return;
+        var tr = document.createElement('tr');
+        tr.dataset.nombre = fila.dataset.nombre;
+        tr.dataset.precio = fila.dataset.precio;
+        tr.dataset.iva = fila.dataset.iva;
+        var precio = Number(fila.dataset.precio || 0);
+        var iva = Number(fila.dataset.iva || 19);
+        var precioConIVA = precio + (precio * iva / 100);
+        tr.innerHTML = '<td style="text-align:center"><input type="checkbox" id="rc-' + fila.dataset.id + '" data-precio="' + precioConIVA + '" value="' + fila.dataset.id + '" autocomplete="off"></td><td><label for="rc-' + fila.dataset.id + '" style="cursor:pointer;display:block;">' + fila.dataset.nombre + '</label></td><td style="text-align:right;font-weight:600;color:var(--blue-light);">$' + precioConIVA.toLocaleString('es-CO') + '</td>';
+        lista.appendChild(tr);
+    });
+    var btns = document.getElementById('reciboBtnsGenerar');
+    if (btns) {
+        btns.innerHTML = '<button class="btn-recibo-pdf" onclick="generarRecibo()">' + (tipo === 'pdf' ? '📄 Generar PDF' : '📊 Generar Excel') + '</button>';
+    }
+    document.getElementById('modalReciboOverlay').classList.add('abierto');
+}
+
+function cerrarModalRecibo() {
+    document.getElementById('modalReciboOverlay').classList.remove('abierto');
+}
+document.getElementById('modalReciboOverlay') && document.getElementById('modalReciboOverlay').addEventListener('click', function(e) { if (e.target === this) cerrarModalRecibo(); });
+
+function generarRecibo() {
+    var data = getReciboData();
+    if (!data.items.length) { alert('Selecciona al menos un producto'); return; }
+    if (tipoReciboActual === 'pdf') {
+        generarReciboPDF(data);
+    } else {
+        generarReciboExcel(data);
+    }
+}
+
+function generarReciboPDF(data) {
+    if (!window.jspdf || !window.jspdf.jsPDF) { alert('Error cargando jsPDF'); return; }
+    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
+    var pageW = 216, margin = 18, contentW = pageW - margin * 2;
+    var subtotal = 0, ivaTotal = 0;
+    for (var i = 0; i < data.items.length; i++) {
+        var base = data.items[i].precio / 1.19;
+        subtotal += base;
+        ivaTotal += data.items[i].precio - base;
+    }
+    var total = subtotal + ivaTotal;
+    var y = margin;
+    doc.setFillColor(124, 58, 237); doc.rect(0, 0, pageW, 38, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(22);
+    doc.text(data.tienda, pageW / 2, 18, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    doc.text('RECIBO DE COMPRA', pageW / 2, 30, { align: 'center' });
+    doc.setTextColor(30, 30, 30);
+    y = 50;
+    doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.5);
+    doc.line(margin, y, pageW - margin, y); y += 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.text('DATOS DEL RECIBO', margin, y); y += 6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text('NIT: ' + data.nit, margin, y); doc.text('Recibo #: ' + data.numero, pageW - margin, y, { align: 'right' }); y += 5;
+    doc.text('Fecha: ' + data.fecha, margin, y); doc.text('Cliente: ' + data.cliente, pageW - margin, y, { align: 'right' }); y += 4;
+    doc.setDrawColor(200, 200, 200); doc.line(margin, y, pageW - margin, y); y += 6;
+    doc.setTextColor(30, 30, 30); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.text('PRODUCTOS', margin, y); y += 7;
+    doc.setFillColor(245, 245, 250); doc.rect(margin, y - 4, contentW, 6, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+    doc.text('CANT', margin + 2, y); doc.text('PRODUCTO', margin + 16, y); doc.text('PRECIO UNIT', pageW - margin - 50, y, { align: 'right' }); doc.text('TOTAL', pageW - margin, y, { align: 'right' }); y += 6;
+    doc.setDrawColor(220, 220, 220); doc.line(margin, y, pageW - margin, y); y += 3;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(50, 50, 50);
+    for (var i = 0; i < data.items.length; i++) {
+        var totalItem = data.items[i].precio;
+        doc.text('1', margin + 5, y, { align: 'center' });
+        doc.text(data.items[i].nombre.length > 35 ? data.items[i].nombre.substring(0, 33) + '..' : data.items[i].nombre, margin + 16, y);
+        doc.text('$' + Math.round(data.items[i].precio).toLocaleString('es-CO'), pageW - margin - 50, y, { align: 'right' });
+        doc.text('$' + Math.round(totalItem).toLocaleString('es-CO'), pageW - margin, y, { align: 'right' });
+        y += 6;
+    }
+    doc.setDrawColor(200, 200, 200); doc.line(margin, y, pageW - margin, y); y += 5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80, 80, 80);
+    doc.text('Subtotal:', margin, y); doc.text('$' + Math.round(subtotal).toLocaleString('es-CO'), pageW - margin, y, { align: 'right' }); y += 5;
+    doc.text('IVA (19%):', margin, y); doc.text('$' + Math.round(ivaTotal).toLocaleString('es-CO'), pageW - margin, y, { align: 'right' }); y += 5;
+    doc.setDrawColor(124, 58, 237); doc.setLineWidth(0.8); doc.line(margin, y, pageW - margin, y); y += 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(124, 58, 237);
+    doc.text('TOTAL:', margin, y); doc.text('$' + Math.round(total).toLocaleString('es-CO'), pageW - margin, y, { align: 'right' }); y += 10;
+    doc.setTextColor(150, 150, 150); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.text('Gracias por su compra', pageW / 2, y, { align: 'center' }); y += 12;
+    if (typeof JsBarcode !== 'undefined') {
+        try {
+            var bc = document.createElement('canvas');
+            JsBarcode(bc, 'REC-' + data.numero, { format: 'CODE128', width: 2, height: 40, displayValue: true, fontSize: 12, margin: 6 });
+            doc.addImage(bc.toDataURL('image/png'), 'PNG', (pageW - 80) / 2, y, 80, 20);
+        } catch(e) {}
+    }
+    doc.save('recibo_' + data.numero + '.pdf');
+    cerrarModalRecibo();
+}
+
+function generarReciboExcel(data) {
+    if (typeof XLSX === 'undefined') { alert('Error cargando XLSX'); return; }
+    var subtotal = 0, ivaTotal = 0;
+    for (var i = 0; i < data.items.length; i++) {
+        var base = data.items[i].precio / 1.19;
+        subtotal += base;
+        ivaTotal += data.items[i].precio - base;
+    }
+    var total = subtotal + ivaTotal;
+    var filas = [
+        [data.tienda, null, null],
+        ['RECIBO DE COMPRA', null, null],
+        [],
+        ['NIT:', data.nit, null],
+        ['Fecha:', data.fecha, null],
+        ['Recibo #:', data.numero, null],
+        ['Cliente:', data.cliente, null],
+        [],
+        ['CANT', 'PRODUCTO', 'TOTAL'],
+    ];
+    for (var i = 0; i < data.items.length; i++) {
+        filas.push([1, data.items[i].nombre, '$' + Math.round(data.items[i].precio).toLocaleString('es-CO')]);
+    }
+    filas.push([]);
+    filas.push([null, 'Subtotal:', '$' + Math.round(subtotal).toLocaleString('es-CO')]);
+    filas.push([null, 'IVA (19%):', '$' + Math.round(ivaTotal).toLocaleString('es-CO')]);
+    filas.push([]);
+    filas.push([null, 'TOTAL:', '$' + Math.round(total).toLocaleString('es-CO')]);
+    filas.push([]);
+    filas.push(['Gracias por su compra', null, null]);
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.aoa_to_sheet(filas);
+    ws['!cols'] = [{ wch: 8 }, { wch: 40 }, { wch: 18 }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Recibo');
+    XLSX.writeFile(wb, 'recibo_' + data.numero + '.xlsx');
+    cerrarModalRecibo();
+}
+
+</script>
+</body>
+</html>

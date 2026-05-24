@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .perfil-wrap{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;}
+        .perfil-card{background:rgba(10,18,50,0.92);border:1px solid rgba(139,92,246,0.2);border-radius:24px;padding:2.5rem 2rem;width:90%;max-width:460px;text-align:center;backdrop-filter:blur(20px);box-shadow:0 30px 80px rgba(0,0,0,0.5);animation:fadeUp 0.7s ease both;}
+        .perfil-avatar-grande{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:2.8rem;margin:0 auto 1.2rem;box-shadow:0 8px 30px rgba(124,58,237,0.4);overflow:hidden;}
+        .perfil-avatar-grande img{width:100%;height:100%;object-fit:cover;}
+        .perfil-nombre{font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:0.25rem;}
+        .perfil-rol{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.15em;color:var(--blue-light);font-weight:700;margin-bottom:0.25rem;}
+        .perfil-correo{font-size:0.85rem;color:rgba(255,255,255,0.45);margin-bottom:2rem;}
+        .foto-upload{margin-bottom:1.5rem;}
+        .foto-upload label{display:inline-block;padding:0.4rem 1.2rem;background:rgba(255,255,255,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:50px;color:var(--text-dim);font-size:0.78rem;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+        .foto-upload label:hover{background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.35);color:#fff;}
+        .foto-upload input[type="file"]{display:none;}
+        .perfil-datos{display:flex;flex-direction:column;gap:0.75rem;margin-bottom:2rem;}
+        .perfil-fila{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);border-radius:10px;padding:0.75rem 1rem;border:1px solid rgba(139,92,246,0.1);}
+        .perfil-fila span:first-child{font-size:0.78rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;}
+        .perfil-fila span:last-child{font-size:0.88rem;color:#a78bfa;font-weight:600;}
+        .perfil-acciones{display:flex;gap:0.7rem;justify-content:center;flex-wrap:wrap;}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    </style>
+</head>
+<body>
+    <div class="fondo"></div><div class="overlay"></div>
+
+    <div class="perfil-wrap">
+        <div class="perfil-card">
+            <div class="perfil-avatar-grande">
+                {% if usuario[7] %}
+                <img src="{{ url_for('static', filename='uploads/' + usuario[7]) }}" alt="Foto">
+                {% else %}
+                👤
+                {% endif %}
+            </div>
+            <div class="perfil-rol">{{ usuario[6]|capitalize if usuario|length > 6 else 'Usuario' }}</div>
+            <div class="perfil-nombre">{{ usuario[1] }} {{ usuario[2] }}</div>
+            <div class="perfil-correo">{{ usuario[3] }}</div>
+
+            <form class="foto-upload" action="{{ url_for('subir_foto') }}" method="POST" enctype="multipart/form-data">
+                <label for="fotoInput">📷 Cambiar foto</label>
+                <input type="file" id="fotoInput" name="foto" accept="image/*" onchange="this.form.submit()" autocomplete="off">
+            </form>
+
+            <div class="perfil-datos">
+                <div class="perfil-fila"><span>Nombre</span><span>{{ usuario[1] }}</span></div>
+                <div class="perfil-fila"><span>Apellido</span><span>{{ usuario[2] }}</span></div>
+                <div class="perfil-fila"><span>Correo</span><span>{{ usuario[3] }}</span></div>
+                <div class="perfil-fila"><span>Rol</span><span>{{ usuario[6]|capitalize if usuario|length > 6 else 'N/A' }}</span></div>
+                <div class="perfil-fila"><span>Registrado</span><span>{{ usuario[5] if usuario|length > 5 and usuario[5] else 'N/A' }}</span></div>
+            </div>
+
+            <div class="perfil-acciones">
+                <a href="{{ url_for('blog') }}" class="btn-nav-register" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);box-shadow:none;color:var(--text-dim);">← Volver</a>
+                <a href="{{ url_for('logout') }}" class="btn-cerrar-sesion" style="display:inline-block;width:auto;padding:0.6rem 1.5rem;">🚪 Cerrar sesión</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

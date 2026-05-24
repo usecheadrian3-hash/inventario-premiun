@@ -20,11 +20,11 @@ if _mysql_url:
     DB_NAME = _u.path.lstrip("/") if _u.path else "sistema_inventario"
     DB_PORT = _u.port or 3306
 else:
-    DB_HOST = os.environ.get("MYSQLHOST") or os.environ.get("DB_HOST", "localhost")
-    DB_USER = os.environ.get("MYSQLUSER") or os.environ.get("DB_USER", "root")
-    DB_PASS = os.environ.get("MYSQLPASSWORD") or os.environ.get("DB_PASS", "")
-    DB_NAME = os.environ.get("MYSQLDATABASE") or os.environ.get("DB_NAME", "sistema_inventario")
-    DB_PORT = int(os.environ.get("MYSQLPORT") or os.environ.get("DB_PORT", "3306"))
+    DB_HOST = os.environ.get("MYSQLHOST") or os.environ.get("mysqlhost") or os.environ.get("DB_HOST", "localhost")
+    DB_USER = os.environ.get("MYSQLUSER") or os.environ.get("mysqluser") or os.environ.get("DB_USER", "root")
+    DB_PASS = os.environ.get("MYSQLPASSWORD") or os.environ.get("mysqlpassword") or os.environ.get("DB_PASS", "")
+    DB_NAME = os.environ.get("MYSQLDATABASE") or os.environ.get("mysql_database") or os.environ.get("DB_NAME", "sistema_inventario")
+    DB_PORT = int(os.environ.get("MYSQLPORT") or os.environ.get("mysqlport") or os.environ.get("DB_PORT", "3306"))
 
 def _conectar():
     conn = mysql.connector.connect(

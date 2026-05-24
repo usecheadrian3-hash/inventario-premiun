@@ -204,16 +204,30 @@ _tablas_creadas = False
 def _ini():
     global _tablas_creadas
     if not _tablas_creadas:
-        for k, v in sorted(os.environ.items()):
-            if "mysql" in k.lower() or "db_" in k.lower():
-                app.logger.warning("ENV %s=%s", k, v)
-        app.logger.warning("CONNECT host=%s user=%s db=%s port=%s", DB_HOST, DB_USER, DB_NAME, DB_PORT)
-        crear_tablas()
         _tablas_creadas = True
+        try:
+            crear_tablas()
+        except Exception as e:
+            print("[WARN] DB init failed:", e, flush=True)
 
 @app.before_request
 def _init_once():
     _ini()
+
+@app.route("/debug")
+def debug_env():
+    import platform
+    lines = ["<h1>Debug</h1><pre>"]
+    for k, v in sorted(os.environ.items()):
+        if any(x in k.lower() for x in ["mysql", "db_", "port", "host", "user", "pass", "secret"]):
+            lines.append(f"{k} = {v}")
+    lines.append(f"\nDB_HOST = {DB_HOST}")
+    lines.append(f"DB_USER = {DB_USER}")
+    lines.append(f"DB_NAME = {DB_NAME}")
+    lines.append(f"DB_PORT = {DB_PORT}")
+    lines.append(f"\nPython: {platform.python_version()}")
+    lines.append("</pre>")
+    return "".join(lines)
 
 def tiene_permiso(permiso):
     if 'usuario_id' not in session:

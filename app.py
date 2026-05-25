@@ -10,51 +10,79 @@ app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+DB_HOST = os.environ.get("MYSQLHOST") or os.environ.get("mysqlhost") or os.environ.get("DB_HOST", "localhost")
+DB_USER = os.environ.get("MYSQLUSER") or os.environ.get("mysqluser") or os.environ.get("DB_USER", "root")
+DB_PASS = os.environ.get("MYSQLPASSWORD") or os.environ.get("mysqlpassword") or os.environ.get("DB_PASS", "")
+DB_NAME = os.environ.get("MYSQLDATABASE") or os.environ.get("MYSQL_DATABASE") or os.environ.get("mysql_database") or os.environ.get("DB_NAME", "railway")
+DB_PORT = int(os.environ.get("MYSQLPORT") or os.environ.get("mysqlport") or os.environ.get("DB_PORT", "3306"))
+
 _mysql_url = os.environ.get("MYSQL_URL")
+if not _mysql_url:
+    _mysql_url = os.environ.get("MYSQL_PUBLIC_URL")
+if not _mysql_url and os.environ.get("RAILWAY_ENVIRONMENT"):
+    _mysql_url = "mysql://root:lmVbekGGiJPOxraBWpPGndiRZvsNYOqm@mysql.railway.internal:3306/railway"
 if _mysql_url:
     from urllib.parse import urlparse
     _u = urlparse(_mysql_url)
-    DB_HOST = _u.hostname or "localhost"
-    DB_USER = _u.username or "root"
-    DB_PASS = _u.password or ""
-    DB_NAME = _u.path.lstrip("/") if _u.path else "sistema_inventario"
-    DB_PORT = _u.port or 3306
-else:
-    DB_HOST = os.environ.get("MYSQLHOST") or os.environ.get("mysqlhost") or os.environ.get("DB_HOST", "localhost")
-    DB_USER = os.environ.get("MYSQLUSER") or os.environ.get("mysqluser") or os.environ.get("DB_USER", "root")
-    DB_PASS = os.environ.get("MYSQLPASSWORD") or os.environ.get("mysqlpassword") or os.environ.get("DB_PASS", "")
-    DB_NAME = os.environ.get("MYSQL_DATABASE") or os.environ.get("MYSQLDATABASE") or os.environ.get("mysql_database") or os.environ.get("DB_NAME", "sistema_inventario")
-    DB_PORT = int(os.environ.get("MYSQLPORT") or os.environ.get("mysqlport") or os.environ.get("DB_PORT", "3306"))
+    DB_HOST = _u.hostname or DB_HOST
+    DB_USER = _u.username or DB_USER
+    DB_PASS = _u.password or DB_PASS
+    DB_NAME = _u.path.lstrip("/") if _u.path else DB_NAME
+    DB_PORT = _u.port or DB_PORT
 
 def _conectar():
-    conn = mysql.connector.connect(
-        host=DB_HOST, user=DB_USER, password=DB_PASS,
-        database=DB_NAME, port=DB_PORT, connection_timeout=3
-    )
-    return conn, conn.cursor()
+    import time
+    for intento in range(3):
+        try:
+            conn = mysql.connector.connect(
+                host=DB_HOST, user=DB_USER, password=DB_PASS,
+                database=DB_NAME, port=DB_PORT, connection_timeout=10,
+                use_pure=True
+            )
+            return conn, conn.cursor()
+        except Exception as e:
+            if intento == 2:
+                raise
+            time.sleep(1)
 
 class _CursorProxy:
     def __init__(self, conn_ref):
         self._c = None
         self._conn_ref = conn_ref
-    def _vivo(self):
-        if self._c is None:
-            self._conn_ref[0], self._c = _conectar()
-            return
+    def _conectar_seguro(self):
         try:
-            self._conn_ref[0].ping(reconnect=True, attempts=1)
-        except:
-            self._conn_ref[0], self._c = _conectar()
+            conn, cur = _conectar()
+            self._conn_ref[0] = conn
+            self._c = cur
+            return True
+        except Exception as e:
+            self._conn_ref[0] = None
+            self._c = None
+            return False
+    def _vivo(self):
+        if self._c is not None:
+            try:
+                self._conn_ref[0].ping(reconnect=True, attempts=1)
+                return
+            except:
+                pass
+        self._conectar_seguro()
     def execute(self, sql, params=None):
         self._vivo()
+        if self._c is None:
+            raise Exception("No se pudo conectar a la base de datos")
         try:
             self._c.execute(sql, params)
         except mysql.connector.Error:
-            self._conn_ref[0], self._c = _conectar()
+            self._conectar_seguro()
+            if self._c is None:
+                raise Exception("No se pudo reconectar a la base de datos")
             self._c.execute(sql, params)
     def __getattr__(self, name):
         if self._c is None:
-            self._conn_ref[0], self._c = _conectar()
+            self._vivo()
+            if self._c is None:
+                raise AttributeError("No se pudo conectar a la base de datos")
         return getattr(self._c, name)
 
 class _ConnProxy:
@@ -204,9 +232,9 @@ _tablas_creadas = False
 def _ini():
     global _tablas_creadas
     if not _tablas_creadas:
-        _tablas_creadas = True
         try:
             crear_tablas()
+            _tablas_creadas = True
         except Exception as e:
             print("[WARN] DB init failed:", e, flush=True)
 
@@ -216,16 +244,26 @@ def _init_once():
 
 @app.route("/debug")
 def debug_env():
-    import platform
+    import platform, traceback
     lines = ["<h1>Debug</h1><pre>"]
     for k, v in sorted(os.environ.items()):
-        if any(x in k.lower() for x in ["mysql", "db_", "port", "host", "user", "pass", "secret"]):
+        if any(x in k.lower() for x in ["mysql", "db_", "port", "host", "user", "pass", "secret", "database"]):
             lines.append(f"{k} = {v}")
     lines.append(f"\nDB_HOST = {DB_HOST}")
     lines.append(f"DB_USER = {DB_USER}")
     lines.append(f"DB_NAME = {DB_NAME}")
     lines.append(f"DB_PORT = {DB_PORT}")
     lines.append(f"\nPython: {platform.python_version()}")
+    try:
+        c, cur = _conectar()
+        lines.append("\n✅ Conexión MySQL EXITOSA")
+        cur.execute("SELECT VERSION()")
+        v = cur.fetchone()
+        lines.append(f"MySQL version: {v[0]}")
+        c.close()
+    except Exception as e:
+        lines.append(f"\n❌ Error de conexión MySQL: {str(e)}")
+        lines.append(traceback.format_exc())
     lines.append("</pre>")
     return "".join(lines)
 
@@ -272,22 +310,25 @@ def inicio():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        correo = request.form["correo"]
-        password = hashlib.sha256(request.form["password"].encode()).hexdigest()
-        cursor.execute("SELECT * FROM usuarios WHERE correo=%s AND password=%s", (correo, password))
-        usuario = cursor.fetchone()
-        if usuario:
-            if not usuario[9]:
-                return render_template("index.html", error="Cuenta desactivada. Contacta al administrador.")
-            session["usuario_id"] = usuario[0]
-            session["usuario_nombre"] = usuario[1]
-            session["usuario_rol"] = usuario[6]
-            cursor.execute("UPDATE usuarios SET ultimo_acceso=NOW() WHERE id=%s", (usuario[0],))
-            conexion.commit()
-            registrar_actividad(usuario[0], usuario[1], "Inicio de sesión", f"Login exitoso - Rol: {usuario[6]}")
-            return redirect("/blog")
-        else:
-            return render_template("index.html", error="Correo o contraseña incorrectos")
+        try:
+            correo = request.form["correo"]
+            password = hashlib.sha256(request.form["password"].encode()).hexdigest()
+            cursor.execute("SELECT * FROM usuarios WHERE correo=%s AND password=%s", (correo, password))
+            usuario = cursor.fetchone()
+            if usuario:
+                if not usuario[9]:
+                    return render_template("index.html", error="Cuenta desactivada. Contacta al administrador.")
+                session["usuario_id"] = usuario[0]
+                session["usuario_nombre"] = usuario[1]
+                session["usuario_rol"] = usuario[6]
+                cursor.execute("UPDATE usuarios SET ultimo_acceso=NOW() WHERE id=%s", (usuario[0],))
+                conexion.commit()
+                registrar_actividad(usuario[0], usuario[1], "Inicio de sesión", f"Login exitoso - Rol: {usuario[6]}")
+                return redirect("/blog")
+            else:
+                return render_template("index.html", error="Correo o contraseña incorrectos")
+        except Exception as e:
+            return render_template("index.html", error=f"Error de conexión a la BD: {str(e)}")
     return render_template("index.html")
 
 @app.route("/registro")

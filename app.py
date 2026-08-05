@@ -225,6 +225,14 @@ def crear_tablas():
     try:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN permisos TEXT DEFAULT NULL")
     except: pass
+    cursor.execute("SELECT COUNT(*) FROM usuarios")
+    if cursor.fetchone()[0] == 0:
+        admin_hash = hashlib.sha256(b"Admin123!").hexdigest()
+        cursor.execute(
+            "INSERT INTO usuarios (nombre, apellido, correo, password, rol, activo, verificado) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            ("Admin", "Inventario", "admin@inventario.com", admin_hash, "admin", 1, 1),
+        )
+        print("[setup] Usuario admin creado: admin@inventario.com / Admin123!", flush=True)
     conexion.commit()
 
 _tablas_creadas = False

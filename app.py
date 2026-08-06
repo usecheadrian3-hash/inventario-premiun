@@ -1,107 +1,14 @@
 from flask import Flask, render_template, request, redirect, session, jsonify
-import mysql.connector
 import re, os, hashlib, secrets, json
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
+from db import cursor, conexion, _conectar, DB_FILE
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "inventario_secreto_2024_mejorado")
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-DB_HOST = os.environ.get("MYSQLHOST") or os.environ.get("mysqlhost") or os.environ.get("DB_HOST", "localhost")
-DB_USER = os.environ.get("MYSQLUSER") or os.environ.get("mysqluser") or os.environ.get("DB_USER", "root")
-DB_PASS = os.environ.get("MYSQLPASSWORD") or os.environ.get("mysqlpassword") or os.environ.get("DB_PASS", "")
-DB_NAME = os.environ.get("MYSQLDATABASE") or os.environ.get("MYSQL_DATABASE") or os.environ.get("mysql_database") or os.environ.get("DB_NAME", "railway")
-DB_PORT = int(os.environ.get("MYSQLPORT") or os.environ.get("mysqlport") or os.environ.get("DB_PORT", "3306"))
-
-_mysql_url = os.environ.get("MYSQL_URL")
-if not _mysql_url:
-    _mysql_url = os.environ.get("MYSQL_PUBLIC_URL")
-if not _mysql_url and os.environ.get("RAILWAY_ENVIRONMENT"):
-    _mysql_url = "mysql://root:lmVbekGGiJPOxraBWpPGndiRZvsNYOqm@mysql.railway.internal:3306/railway"
-if _mysql_url:
-    from urllib.parse import urlparse
-    _u = urlparse(_mysql_url)
-    DB_HOST = _u.hostname or DB_HOST
-    DB_USER = _u.username or DB_USER
-    DB_PASS = _u.password or DB_PASS
-    DB_NAME = _u.path.lstrip("/") if _u.path else DB_NAME
-    DB_PORT = _u.port or DB_PORT
-
-def _conectar():
-    import time
-    for intento in range(3):
-        try:
-            conn = mysql.connector.connect(
-                host=DB_HOST, user=DB_USER, password=DB_PASS,
-                database=DB_NAME, port=DB_PORT, connection_timeout=10,
-                use_pure=True
-            )
-            return conn, conn.cursor()
-        except Exception as e:
-            if intento == 2:
-                raise
-            time.sleep(1)
-
-class _CursorProxy:
-    def __init__(self, conn_ref):
-        self._c = None
-        self._conn_ref = conn_ref
-    def _conectar_seguro(self):
-        try:
-            conn, cur = _conectar()
-            self._conn_ref[0] = conn
-            self._c = cur
-            return True
-        except Exception as e:
-            self._conn_ref[0] = None
-            self._c = None
-            return False
-    def _vivo(self):
-        if self._c is not None:
-            try:
-                self._conn_ref[0].ping(reconnect=True, attempts=1)
-                return
-            except:
-                pass
-        self._conectar_seguro()
-    def execute(self, sql, params=None):
-        self._vivo()
-        if self._c is None:
-            raise Exception("No se pudo conectar a la base de datos")
-        try:
-            self._c.execute(sql, params)
-        except mysql.connector.Error:
-            self._conectar_seguro()
-            if self._c is None:
-                raise Exception("No se pudo reconectar a la base de datos")
-            self._c.execute(sql, params)
-    def __getattr__(self, name):
-        if self._c is None:
-            self._vivo()
-            if self._c is None:
-                raise AttributeError("No se pudo conectar a la base de datos")
-        return getattr(self._c, name)
-
-class _ConnProxy:
-    def __init__(self, conn_ref):
-        self._conn_ref = conn_ref
-    def commit(self):
-        try:
-            if self._conn_ref[0] is not None:
-                self._conn_ref[0].commit()
-        except mysql.connector.Error:
-            pass
-    def __getattr__(self, name):
-        if self._conn_ref[0] is None:
-            self._conn_ref[0], _ = _conectar()
-        return getattr(self._conn_ref[0], name)
-
-_conn_ref = [None]
-cursor = _CursorProxy(_conn_ref)
-conexion = _ConnProxy(_conn_ref)
 
 def registrar_historial(usuario_id, usuario_nombre, accion, detalle, tabla=None, reg_id=None):
     try:
@@ -126,71 +33,76 @@ def registrar_actividad(usuario_id, usuario_nombre, accion, detalle):
 
 def crear_tablas():
     cursor.execute("""CREATE TABLE IF NOT EXISTS comentarios (
-        id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(100), texto TEXT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre VARCHAR(100), texto TEXT,
         fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS historial (
-        id INT AUTO_INCREMENT PRIMARY KEY, usuario_id INT, usuario_nombre VARCHAR(200),
+        id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, usuario_nombre VARCHAR(200),
         accion VARCHAR(50), detalle TEXT, tabla_afectada VARCHAR(100),
-        registro_id INT, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
+        registro_id INTEGER, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS actividad (
-        id INT AUTO_INCREMENT PRIMARY KEY, usuario_id INT, usuario_nombre VARCHAR(200),
+        id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, usuario_nombre VARCHAR(200),
         accion VARCHAR(100), detalle TEXT, ip_address VARCHAR(50),
         fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS proveedores (
-        id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(200), contacto VARCHAR(200),
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre VARCHAR(200), contacto VARCHAR(200),
         telefono VARCHAR(50), correo VARCHAR(200), direccion TEXT,
         fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS categorias (
-        id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(100) UNIQUE, descripcion TEXT)""")
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre VARCHAR(100) UNIQUE, descripcion TEXT)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS etiquetas (
-        id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(100) UNIQUE)""")
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre VARCHAR(100) UNIQUE)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS clientes (
-        id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(200), telefono VARCHAR(50),
-        correo VARCHAR(200), direccion TEXT, total_compras DECIMAL(12,2) DEFAULT 0,
-        visitas INT DEFAULT 0, ultima_compra DATETIME,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre VARCHAR(200), telefono VARCHAR(50),
+        correo VARCHAR(200), direccion TEXT, total_compras NUMERIC DEFAULT 0,
+        visitas INTEGER DEFAULT 0, ultima_compra DATETIME,
         fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS ventas (
-        id INT AUTO_INCREMENT PRIMARY KEY, usuario_id INT, usuario_nombre VARCHAR(200),
-        cliente_id INT, cliente_nombre VARCHAR(200), total DECIMAL(12,2),
-        iva_total DECIMAL(10,2), subtotal DECIMAL(12,2), metodo_pago VARCHAR(50),
+        id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, usuario_nombre VARCHAR(200),
+        cliente_id INTEGER, cliente_nombre VARCHAR(200), total NUMERIC,
+        iva_total NUMERIC, subtotal NUMERIC, metodo_pago VARCHAR(50),
         fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS detalle_ventas (
-        id INT AUTO_INCREMENT PRIMARY KEY, venta_id INT, producto_id INT,
-        producto_nombre VARCHAR(200), cantidad INT, precio_unitario DECIMAL(10,2),
-        iva DECIMAL(5,2), subtotal DECIMAL(10,2))""")
+        id INTEGER PRIMARY KEY AUTOINCREMENT, venta_id INTEGER, producto_id INTEGER,
+        producto_nombre VARCHAR(200), cantidad INTEGER, precio_unitario NUMERIC,
+        iva NUMERIC, subtotal NUMERIC)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS gastos (
-        id INT AUTO_INCREMENT PRIMARY KEY, descripcion TEXT, monto DECIMAL(10,2),
-        categoria VARCHAR(100), usuario_id INT, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
+        id INTEGER PRIMARY KEY AUTOINCREMENT, descripcion TEXT, monto NUMERIC,
+        categoria VARCHAR(100), usuario_id INTEGER, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS compras (
-        id INT AUTO_INCREMENT PRIMARY KEY, producto_id INT, producto_nombre VARCHAR(200),
-        cantidad INT, precio_unitario DECIMAL(10,2), total DECIMAL(10,2),
-        proveedor_id INT, usuario_id INT, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
+        id INTEGER PRIMARY KEY AUTOINCREMENT, producto_id INTEGER, producto_nombre VARCHAR(200),
+        cantidad INTEGER, precio_unitario NUMERIC, total NUMERIC,
+        proveedor_id INTEGER, usuario_id INTEGER, fecha DATETIME DEFAULT CURRENT_TIMESTAMP)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS recuperacion (
-        id INT AUTO_INCREMENT PRIMARY KEY, usuario_id INT, token VARCHAR(255),
+        id INTEGER PRIMARY KEY AUTOINCREMENT, usuario_id INTEGER, token VARCHAR(255),
         usado BOOLEAN DEFAULT FALSE, fecha_solicitud DATETIME DEFAULT CURRENT_TIMESTAMP,
         fecha_uso DATETIME)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS usuarios (
-        id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(200), apellido VARCHAR(200),
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre VARCHAR(200), apellido VARCHAR(200),
         correo VARCHAR(200) UNIQUE, password VARCHAR(300),
-        fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP)""")
+        fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+        rol VARCHAR(50) DEFAULT 'empleado', foto VARCHAR(500),
+        verificado BOOLEAN DEFAULT FALSE, activo BOOLEAN DEFAULT TRUE,
+        ultimo_acceso DATETIME, permisos TEXT)""")
 
     cursor.execute("""CREATE TABLE IF NOT EXISTS productos (
-        id INT AUTO_INCREMENT PRIMARY KEY, nombre VARCHAR(200), descripcion TEXT,
-        cantidad INT DEFAULT 0, stock_minimo INT DEFAULT 0, precio DECIMAL(10,2),
+        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre VARCHAR(200), descripcion TEXT,
+        cantidad INTEGER DEFAULT 0, stock_minimo INTEGER DEFAULT 0, precio NUMERIC,
         categoria VARCHAR(100), proveedor VARCHAR(200), fecha DATE,
-        estado VARCHAR(50) DEFAULT 'Activo')""")
+        estado VARCHAR(50) DEFAULT 'Activo',
+        iva NUMERIC DEFAULT 19.00, etiquetas VARCHAR(500) DEFAULT '',
+        precio_con_iva NUMERIC GENERATED ALWAYS AS (precio + (precio * iva / 100)) STORED)""")
 
     try:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN rol VARCHAR(50) DEFAULT 'empleado'")
@@ -211,13 +123,13 @@ def crear_tablas():
         cursor.execute("ALTER TABLE usuarios ADD COLUMN fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP")
     except: pass
     try:
-        cursor.execute("ALTER TABLE productos ADD COLUMN iva DECIMAL(5,2) DEFAULT 19.00")
+        cursor.execute("ALTER TABLE productos ADD COLUMN iva NUMERIC DEFAULT 19.00")
     except: pass
     try:
-        cursor.execute("ALTER TABLE productos ADD COLUMN precio_con_iva DECIMAL(10,2) GENERATED ALWAYS AS (precio + (precio * iva / 100)) STORED")
+        cursor.execute("ALTER TABLE productos ADD COLUMN precio_con_iva NUMERIC GENERATED ALWAYS AS (precio + (precio * iva / 100)) STORED")
     except:
         try:
-            cursor.execute("ALTER TABLE productos ADD COLUMN precio_con_iva DECIMAL(10,2) DEFAULT 0")
+            cursor.execute("ALTER TABLE productos ADD COLUMN precio_con_iva NUMERIC DEFAULT 0")
         except: pass
     try:
         cursor.execute("ALTER TABLE productos ADD COLUMN etiquetas VARCHAR(500) DEFAULT ''")
@@ -257,20 +169,17 @@ def debug_env():
     for k, v in sorted(os.environ.items()):
         if any(x in k.lower() for x in ["mysql", "db_", "port", "host", "user", "pass", "secret", "database"]):
             lines.append(f"{k} = {v}")
-    lines.append(f"\nDB_HOST = {DB_HOST}")
-    lines.append(f"DB_USER = {DB_USER}")
-    lines.append(f"DB_NAME = {DB_NAME}")
-    lines.append(f"DB_PORT = {DB_PORT}")
+    lines.append(f"\nDB_FILE = {DB_FILE}")
     lines.append(f"\nPython: {platform.python_version()}")
     try:
-        c, cur = _conectar()
-        lines.append("\n✅ Conexión MySQL EXITOSA")
-        cur.execute("SELECT VERSION()")
+        cur = _conectar().cursor()
+        lines.append("\n✅ Conexión SQLite EXITOSA")
+        cur.execute("SELECT sqlite_version()")
         v = cur.fetchone()
-        lines.append(f"MySQL version: {v[0]}")
-        c.close()
+        lines.append(f"SQLite version: {v[0]}")
+        cur.close()
     except Exception as e:
-        lines.append(f"\n❌ Error de conexión MySQL: {str(e)}")
+        lines.append(f"\n❌ Error de conexión BD: {str(e)}")
         lines.append(traceback.format_exc())
     lines.append("</pre>")
     return "".join(lines)
@@ -302,9 +211,12 @@ def requerir_permiso(permiso):
 def obtener_productos_con_iva():
     cursor.execute("SELECT * FROM productos")
     productos = cursor.fetchall()
+    has_col = None
     try:
-        cursor.execute("SHOW COLUMNS FROM productos LIKE 'precio_con_iva'")
-        has_col = cursor.fetchone()
+        cursor.execute("PRAGMA table_info(productos)")
+        cols = cursor.fetchall()
+        if any(row[1] == "precio_con_iva" for row in cols):
+            has_col = True
     except:
         has_col = None
     return productos, has_col is not None
